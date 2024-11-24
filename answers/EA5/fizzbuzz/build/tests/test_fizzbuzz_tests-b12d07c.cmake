@@ -1,0 +1,7 @@
+add_test( [==[FizzBuzz computes the correct sequence]==] [==[L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/fizzbuzz/build/tests/test_fizzbuzz.exe]==] [==[FizzBuzz computes the correct sequence]==]  )
+set_tests_properties( [==[FizzBuzz computes the correct sequence]==] PROPERTIES WORKING_DIRECTORY [==[L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/fizzbuzz/build/tests]==])
+add_test( [==[Test positives]==] [==[L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/fizzbuzz/build/tests/test_fizzbuzz.exe]==] [==[Test positives]==]  )
+set_tests_properties( [==[Test positives]==] PROPERTIES WORKING_DIRECTORY [==[L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/fizzbuzz/build/tests]==])
+add_test( [==[Test negatives]==] [==[L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/fizzbuzz/build/tests/test_fizzbuzz.exe]==] [==[Test negatives]==]  )
+set_tests_properties( [==[Test negatives]==] PROPERTIES WORKING_DIRECTORY [==[L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/fizzbuzz/build/tests]==])
+set( test_fizzbuzz_TESTS [==[FizzBuzz computes the correct sequence]==] [==[Test positives]==] [==[Test negatives]==])

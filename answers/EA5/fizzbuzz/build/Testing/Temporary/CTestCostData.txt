@@ -1,0 +1,4 @@
+FizzBuzz computes the correct sequence 1 0.010037
+Test positives 1 0.0074818
+Test negatives 1 0.0079726
+---

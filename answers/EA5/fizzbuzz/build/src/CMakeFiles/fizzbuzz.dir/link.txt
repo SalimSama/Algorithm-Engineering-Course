@@ -1,0 +1,2 @@
+C:\MinGW\bin\ar.exe qc libfizzbuzz.a CMakeFiles/fizzbuzz.dir/fizzbuzz.cpp.obj
+C:\MinGW\bin\ranlib.exe libfizzbuzz.a

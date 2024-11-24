@@ -1,0 +1,5 @@
+if(EXISTS "L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/fizzbuzz/build/tests/test_fizzbuzz_tests-b12d07c.cmake")
+  include("L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/fizzbuzz/build/tests/test_fizzbuzz_tests-b12d07c.cmake")
+else()
+  add_test(test_fizzbuzz_NOT_BUILT-b12d07c test_fizzbuzz_NOT_BUILT-b12d07c)
+endif()

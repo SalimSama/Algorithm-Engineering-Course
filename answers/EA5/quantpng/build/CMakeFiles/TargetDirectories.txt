@@ -1,0 +1,9 @@
+L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/quantpng/build/CMakeFiles/quantpng.dir
+L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/quantpng/build/CMakeFiles/edit_cache.dir
+L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/quantpng/build/CMakeFiles/rebuild_cache.dir
+L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/quantpng/build/lodepng/CMakeFiles/lodepng.dir
+L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/quantpng/build/lodepng/CMakeFiles/edit_cache.dir
+L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/quantpng/build/lodepng/CMakeFiles/rebuild_cache.dir
+L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/quantpng/build/quantize/CMakeFiles/quantize.dir
+L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/quantpng/build/quantize/CMakeFiles/edit_cache.dir
+L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/answers/EA5/quantpng/build/quantize/CMakeFiles/rebuild_cache.dir

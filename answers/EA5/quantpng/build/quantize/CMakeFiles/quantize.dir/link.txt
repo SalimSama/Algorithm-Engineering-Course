@@ -1,0 +1,2 @@
+C:\MinGW\bin\ar.exe qc libquantize.a CMakeFiles/quantize.dir/blur.c.obj CMakeFiles/quantize.dir/kmeans.c.obj CMakeFiles/quantize.dir/libimagequant.c.obj CMakeFiles/quantize.dir/mediancut.c.obj CMakeFiles/quantize.dir/mempool.c.obj CMakeFiles/quantize.dir/nearest.c.obj CMakeFiles/quantize.dir/pam.c.obj
+C:\MinGW\bin\ranlib.exe libquantize.a
