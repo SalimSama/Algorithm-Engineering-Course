@@ -7,9 +7,10 @@ data = pd.read_csv('benchmark_results.csv')
 # Graph 1: Speedup vs. Number of Threads
 plt.figure(figsize=(20, 15))  # Increase figure size for better readability
 for size in data['ArraySize'].unique():
-    subset = data[data['ArraySize'] == size]
-    plt.plot(subset['NumThreads'], subset['StdSort'] / subset['MinMaxQuicksort'], label=f'MinMaxQuicksort Size {size}', linewidth=2)
-    plt.plot(subset['NumThreads'], subset['StdSort'] / subset['GnuParallelSort'], label=f'GnuParallelSort Size {size}', linewidth=2)
+    if (size == 150000000):
+        subset = data[data['ArraySize'] == size]
+        plt.plot(subset['NumThreads'], subset['StdSort'] / subset['MinMaxQuicksort'], label=f'MinMaxQuicksort Size {size}', linewidth=2)
+        plt.plot(subset['NumThreads'], subset['StdSort'] / subset['GnuParallelSort'], label=f'GnuParallelSort Size {size}', linewidth=2)
 plt.xlabel('Number of Threads', fontsize=15)
 plt.ylabel('Speedup over std::sort', fontsize=15)
 plt.title('Speedup vs. Number of Threads', fontsize=17)
