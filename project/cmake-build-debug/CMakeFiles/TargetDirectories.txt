@@ -1,3 +1,0 @@
-L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/project/cmake-build-debug/CMakeFiles/project.dir
-L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/project/cmake-build-debug/CMakeFiles/edit_cache.dir
-L:/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/project/cmake-build-debug/CMakeFiles/rebuild_cache.dir
