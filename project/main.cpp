@@ -34,7 +34,7 @@ void write_ppm(const std::string &filename, int width, int height, int channels,
 
 
 // Funktion: Bild binarisieren (Schwarz-Weiß-Umwandlung basierend auf einem Schwellenwert)
-void binarize_image(const std::string &input_path, const std::string &output_path, int threshold) {
+void binarize_image_easy(const std::string &input_path, const std::string &output_path, int threshold) {
     int width, height, channels;  // Variablen für Bildbreite, -höhe und Farbkanäle
 
     // Lade das Bild (PPM-Format) in den Speicher
@@ -148,9 +148,9 @@ int main(int argc, char *argv[]) {
     int threshold = std::stoi(argv[3]); // Schwellenwert für die Binarisierung (z. B. 128)
 
     // Rufe die Binarisierungsfunktion auf
-    binarize_image(input_path, output_path, threshold);
+    binarize_image_easy(input_path, output_path, threshold);
 
-    std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
+    //std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
 
     // Informiere den Benutzer über den Abschluss
     std::cout << "Image processed and saved to " << output_path << std::endl;
