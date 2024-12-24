@@ -16,4 +16,13 @@ bool write_binary_image(const std::string &filename, int width, int height, int 
 // Funktion zur Binarisierung eines Bildes
 void binarize_image(const std::string &input_path, std::string output_path, int threshold);
 
+// Hilfsfunktion: lokales Mittel und Standardabweichung berechnen
+void local_mean_std(const unsigned char* gray, int width, int height, int x, int y, int half_win, float &mean, float &stddev);
+
+// Funktion: Sauvola-Binarisierung
+void sauvola_binarize(const unsigned char* gray, unsigned char* out, int width, int height, int window_size, float k, float R);
+
+// Funktion: NICK-Binarisierung
+void nick_binarize(const unsigned char* gray, unsigned char* out, int width, int height, int window_size, float k);
+
 #endif // IMAGE_UTILS_H

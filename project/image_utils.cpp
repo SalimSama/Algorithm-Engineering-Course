@@ -1,7 +1,8 @@
-#include "image_utils.h"
+#include <image_utils.h>
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <cmath>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image.h>
@@ -98,3 +99,114 @@ void binarize_image(const std::string &input_path, std::string output_path, int 
     }
     stbi_image_free(image);
 }
+
+//bessere Methoden der Binarisierung:
+
+// Beispiel: Lokale Binarisierung nach Sauvola
+// T(x, y) = m(x, y) * [1 + k * (s(x, y)/R - 1)]
+// m(x, y): Lokaler Mittelwert
+// s(x, y): Lokale Standardabweichung
+// R: Dynamischer Bereich der Standardabweichung (oft 128)
+// k: Empirischer Faktor (z.B. 0.2 - 0.5)
+
+// Beispiel: Lokale Binarisierung nach Nick:
+// T(x, y) = m(x, y) + k * ( sqrt( (G² - n*m²)/n ) )
+// m(x, y) = lokaler Mittelwert in Fenstergroesse
+// G = Summe aller Grauwerte im lokalen Fenster
+// n = Anzahl Pixel im Fenster
+// k z.B. um 0.1 bis 0.2
+
+// Hilfsfunktion: lokales Mittel und Standardabweichung berechnen
+// (einfach, aber ineffizient; besser Integralbilder verwenden)
+void local_mean_std(const unsigned char* gray,
+                    int width, int height,
+                    int x, int y,
+                    int half_win,
+                    float &mean, float &stddev)
+{
+    int count = 0;
+    float sum = 0.0f, sum_sq = 0.0f;
+    for (int dy = -half_win; dy <= half_win; dy++) {
+        for (int dx = -half_win; dx <= half_win; dx++) {
+            int yy = y + dy;
+            int xx = x + dx;
+            if (xx >= 0 && yy >= 0 && xx < width && yy < height) {
+                unsigned char val = gray[yy * width + xx];
+                sum += val;
+                sum_sq += val * val;
+                count++;
+            }
+        }
+    }
+    mean = sum / count;
+    float var = (sum_sq / count) - (mean * mean);
+    stddev = (var > 0) ? std::sqrt(var) : 0.0f;
+}
+
+// Beispiel-Funktion: Sauvola-Binarisierung
+void sauvola_binarize(const unsigned char* gray,
+                      unsigned char* out,
+                      int width, int height,
+                      int window_size,
+                      float k=0.2f,   // Empirischer Faktor
+                      float R=128.0f // Dynamischer Bereich
+)
+{
+    int half_win = window_size / 2;
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            float mean = 0.0f, stddev = 0.0f;
+            local_mean_std(gray, width, height, x, y, half_win, mean, stddev);
+            float threshold = mean * (1.0f + k * ((stddev / R) - 1.0f));
+            out[y * width + x] = (gray[y * width + x] > threshold) ? 255 : 0;
+        }
+    }
+}
+
+// Beispiel-Funktion: NICK-Binarisierung
+void nick_binarize(const unsigned char* gray,
+                   unsigned char* out,
+                   int width, int height,
+                   int window_size,
+                   float k=0.1f)
+{
+    int half_win = window_size / 2;
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            // Summen für Nick berechnen
+            float sum = 0.0f;
+            int count = 0;
+            for (int dy = -half_win; dy <= half_win; dy++) {
+                for (int dx = -half_win; dx <= half_win; dx++) {
+                    int yy = y + dy;
+                    int xx = x + dx;
+                    if (xx >= 0 && yy >= 0 && xx < width && yy < height) {
+                        sum += gray[yy * width + xx];
+                        count++;
+                    }
+                }
+            }
+            float mean = sum / count;
+            // Varianz / Standardabweichung
+            float sum_sq = 0.0f;
+            for (int dy = -half_win; dy <= half_win; dy++) {
+                for (int dx = -half_win; dx <= half_win; dx++) {
+                    int yy = y + dy;
+                    int xx = x + dx;
+                    if (xx >= 0 && yy >= 0 && xx < width && yy < height) {
+                        float val = gray[yy * width + xx];
+                        sum_sq += (val - mean) * (val - mean);
+                    }
+                }
+            }
+            float variance = sum_sq / count;
+            float stddev = std::sqrt(variance);
+            // Nick-Formel: T = m + k * sqrt( (G^2 - n*m^2)/n )
+            // Alternative Implementationen existieren, je nach Literatur.
+            float T = mean + k * stddev;
+            out[y * width + x] = (gray[y * width + x] > T) ? 255 : 0;
+        }
+    }
+}
+
+
