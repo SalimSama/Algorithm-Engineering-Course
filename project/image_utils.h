@@ -25,4 +25,8 @@ void sauvola_binarize(const unsigned char* gray, unsigned char* out, int width, 
 // Funktion: NICK-Binarisierung
 void nick_binarize(const unsigned char* gray, unsigned char* out, int width, int height, int window_size, float k);
 
+// Funktion: Verwendung von Sauvola und NICK
+void process_advanced_binarization(const std::string &input_path);
+
+
 #endif // IMAGE_UTILS_H

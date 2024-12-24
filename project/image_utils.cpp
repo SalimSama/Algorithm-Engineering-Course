@@ -210,3 +210,49 @@ void nick_binarize(const unsigned char* gray,
 }
 
 
+void process_advanced_binarization(const std::string &input_path) {
+    int width, height, channels;
+    unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
+    if (!image) {
+        std::cerr << "Error: Failed to load image!" << std::endl;
+        return;
+    }
+
+    // Grauwert-Umwandlung
+    std::vector<unsigned char> gray(width * height);
+    for (int i = 0; i < width * height; i++) {
+        gray[i] = static_cast<unsigned char>(
+                0.2126f * image[i * channels + 0] +
+                0.7152f * image[i * channels + 1] +
+                0.0722f * image[i * channels + 2]);
+    }
+
+    // Dynamische Pfade für die Ausgabedateien
+    std::string output_path_sauvola = make_output_path(input_path) + "_sauvola.png";
+    std::string output_path_nick = make_output_path(input_path) + "_nick.png";
+
+    // Sauvola-Binarisierung
+    std::vector<unsigned char> output_sauvola(width * height);
+    sauvola_binarize(gray.data(), output_sauvola.data(), width, height, 15, 0.2f, 128.0f);
+
+    if (!write_binary_image(output_path_sauvola, width, height, 1, output_sauvola.data())) {
+        std::cerr << "Error: Failed to write Sauvola output image!" << std::endl;
+    } else {
+        std::cout << "Sauvola binarized image saved to: " << output_path_sauvola << std::endl;
+    }
+
+    // Nick-Binarisierung
+    std::vector<unsigned char> output_nick(width * height);
+    nick_binarize(gray.data(), output_nick.data(), width, height, 15, 0.1f);
+
+    if (!write_binary_image(output_path_nick, width, height, 1, output_nick.data())) {
+        std::cerr << "Error: Failed to write Nick output image!" << std::endl;
+    } else {
+        std::cout << "Nick binarized image saved to: " << output_path_nick << std::endl;
+    }
+
+    stbi_image_free(image);
+}
+
+
+

@@ -17,5 +17,6 @@ int main(int argc, char *argv[]) {
     }
 
     binarize_image(input_path, output_path, threshold);
+    process_advanced_binarization(argv[1]);
     return 0;
 }
