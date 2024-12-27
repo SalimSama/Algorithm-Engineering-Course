@@ -327,20 +327,28 @@ void computeIntegralImages(const unsigned char* gray,
     integralImg.resize(width * height, 0.0);
     integralImgSq.resize(width * height, 0.0);
 
+    // 1. Zeilenweiser Durchgang (Prefix-Sums pro Zeile)
+#pragma omp parallel for
     for (int y = 0; y < height; y++) {
         double sumRow = 0.0, sumRowSq = 0.0;
         for (int x = 0; x < width; x++) {
             double val = static_cast<double>(gray[y * width + x]);
-            sumRow += val;
+            sumRow   += val;
             sumRowSq += val * val;
+            integralImg[y * width + x]   = sumRow;
+            integralImgSq[y * width + x] = sumRowSq;
+        }
+    }
 
-            if (y == 0) {
-                integralImg[y * width + x] = sumRow;
-                integralImgSq[y * width + x] = sumRowSq;
-            } else {
-                integralImg[y * width + x] = integralImg[(y - 1) * width + x] + sumRow;
-                integralImgSq[y * width + x] = integralImgSq[(y - 1) * width + x] + sumRowSq;
-            }
+    // 2. Spaltenweiser Durchgang (Prefix-Sums der bereits zeilenweise summierten Daten)
+#pragma omp parallel for
+    for (int x = 0; x < width; x++) {
+        double colSum = 0.0, colSumSq = 0.0;
+        for (int y = 0; y < height; y++) {
+            colSum   += integralImg[y * width + x];
+            colSumSq += integralImgSq[y * width + x];
+            integralImg[y * width + x]   = colSum;
+            integralImgSq[y * width + x] = colSumSq;
         }
     }
 }
@@ -391,6 +399,7 @@ void sauvola_binarize_integral(const unsigned char* gray,
     int half_win = window_size / 2;
     auto start = std::chrono::high_resolution_clock::now();
 
+#pragma omp parallel for collapse(2)
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             float mean = 0.f, stddev = 0.f;
