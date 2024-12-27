@@ -16,6 +16,9 @@ bool write_binary_image(const std::string &filename, int width, int height, int 
 // Funktion zur Binarisierung eines Bildes
 void binarize_image(const std::string &input_path, std::string output_path, int threshold);
 
+// Funktion zur Binarisierung eines Bildes mit OpenMP
+void binarize_image_parallel(const std::string &input_path, std::string output_path, int threshold);
+
 // Hilfsfunktion: lokales Mittel und Standardabweichung berechnen
 void local_mean_std(const unsigned char* gray, int width, int height, int x, int y, int half_win, float &mean, float &stddev);
 

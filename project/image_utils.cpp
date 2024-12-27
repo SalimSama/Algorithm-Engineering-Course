@@ -3,6 +3,8 @@
 #include <fstream>
 #include <filesystem>
 #include <cmath>
+#include <chrono>
+#include <omp.h>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image.h>
@@ -80,10 +82,13 @@ void binarize_image(const std::string &input_path, std::string output_path, int 
     }
 
     std::vector<unsigned char> out(width * height * channels);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
     for (int i = 0; i < width * height; i++) {
         int idx = i * channels;
         unsigned char lum = static_cast<unsigned char>(
-                0.2126f * image[idx] + 0.7152f * image[idx + 1] + 0.0722f * image[idx + 2]
+            0.2126f * image[idx] + 0.7152f * image[idx + 1] + 0.0722f * image[idx + 2]
         );
         unsigned char binary = (lum > threshold) ? 255 : 0;
 
@@ -92,10 +97,55 @@ void binarize_image(const std::string &input_path, std::string output_path, int 
         }
     }
 
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Sequential binarization time: " << duration.count() << " seconds." << std::endl;
+
     if (!write_binary_image(output_path, width, height, channels, out.data())) {
         std::cerr << "Error: Failed to write image! " << output_path << std::endl;
     } else {
         std::cout << "Binarized image saved to: " << output_path << std::endl;
+    }
+    stbi_image_free(image);
+}
+
+void binarize_image_parallel(const std::string &input_path, std::string output_path, int threshold) {
+    int width, height, channels;
+    unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
+    if (!image) {
+        std::cerr << "Error: Failed to load image!" << std::endl;
+        return;
+    }
+
+    if (output_path.empty()) {
+        output_path = make_output_path(input_path);
+    }
+
+    std::vector<unsigned char> out(width * height * channels);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+#pragma omp parallel for
+    for (int i = 0; i < width * height; i++) {
+        int idx = i * channels;
+        unsigned char lum = static_cast<unsigned char>(
+            0.2126f * image[idx] + 0.7152f * image[idx + 1] + 0.0722f * image[idx + 2]
+        );
+        unsigned char binary = (lum > threshold) ? 255 : 0;
+
+        for (int c = 0; c < channels; c++) {
+            out[idx + c] = binary;
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Parallel binarization time: " << duration.count() << " seconds." << std::endl;
+
+    if (!write_binary_image(output_path, width, height, channels, out.data())) {
+        std::cerr << "Error: Failed to write image! " << output_path << std::endl;
+    } else {
+        std::cout << "Parallel binarized image saved to: " << output_path << std::endl;
     }
     stbi_image_free(image);
 }
