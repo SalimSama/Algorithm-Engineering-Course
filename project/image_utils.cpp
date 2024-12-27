@@ -125,7 +125,7 @@ void binarize_image_parallel(const std::string &input_path, std::string output_p
 
     auto start = std::chrono::high_resolution_clock::now();
 
-#pragma omp parallel for
+#pragma omp parallel for simd
     for (int i = 0; i < width * height; i++) {
         int idx = i * channels;
         unsigned char lum = static_cast<unsigned char>(
@@ -200,9 +200,12 @@ void sauvola_binarize(const unsigned char* gray,
                       int window_size,
                       float k=0.2f,   // Empirischer Faktor
                       float R=128.0f // Dynamischer Bereich
-)
-{
+) {
     int half_win = window_size / 2;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+#pragma omp parallel for collapse(2)
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             float mean = 0.0f, stddev = 0.0f;
@@ -211,16 +214,24 @@ void sauvola_binarize(const unsigned char* gray,
             out[y * width + x] = (gray[y * width + x] > threshold) ? 255 : 0;
         }
     }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Sauvola binarization time: " << duration.count() << " seconds." << std::endl;
 }
+
 
 // Beispiel-Funktion: NICK-Binarisierung
 void nick_binarize(const unsigned char* gray,
                    unsigned char* out,
                    int width, int height,
                    int window_size,
-                   float k=0.1f)
-{
+                   float k=0.1f) {
     int half_win = window_size / 2;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+#pragma omp parallel for collapse(2)
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             // Summen für Nick berechnen
@@ -252,11 +263,14 @@ void nick_binarize(const unsigned char* gray,
             float variance = sum_sq / count;
             float stddev = std::sqrt(variance);
             // Nick-Formel: T = m + k * sqrt( (G^2 - n*m^2)/n )
-            // Alternative Implementationen existieren, je nach Literatur.
             float T = mean + k * stddev;
             out[y * width + x] = (gray[y * width + x] > T) ? 255 : 0;
         }
     }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Nick binarization time: " << duration.count() << " seconds." << std::endl;
 }
 
 
@@ -270,6 +284,7 @@ void process_advanced_binarization(const std::string &input_path) {
 
     // Grauwert-Umwandlung
     std::vector<unsigned char> gray(width * height);
+#pragma omp parallel for
     for (int i = 0; i < width * height; i++) {
         gray[i] = static_cast<unsigned char>(
                 0.2126f * image[i * channels + 0] +
