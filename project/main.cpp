@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
 
     binarize_image(input_path, output_path, threshold);
     binarize_image_parallel(input_path, output_path, threshold);
-    process_advanced_binarization(argv[1]);
+    process_advanced_binarization(input_path);
+    process_integral_binarization(input_path);
     return 0;
 }

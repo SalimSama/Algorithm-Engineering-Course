@@ -35,20 +35,18 @@ bool write_ppm_ascii(const std::string &filename, int width, int height, int cha
     return true;
 }
 
-// Hilfsfunktion, um sicherzustellen, dass kein Slash vorangestellt wird,
-// wenn parent_path() leer ist. So landen wir nicht im Root-Verzeichnis "/...".
 std::string make_output_path(const std::string &input_path) {
     namespace fs = std::filesystem;
     fs::path p(input_path);
     std::string stem = p.stem().string();
     std::string ext = p.extension().string();
-    std::string parent = p.parent_path().string();
 
-    if (parent.empty()) {
-        return stem + "_bin" + ext;
-    } else {
-        return parent + "/" + stem + "_bin" + ext;
+    fs::path results_dir = "Results";
+    if (!fs::exists(results_dir)) {
+        fs::create_directory(results_dir);
     }
+
+    return (results_dir / (stem + "_bin" + ext)).string();
 }
 
 // Schreibt das binarisierte Bild als PNG/JPG oder ASCII-PPM.
@@ -314,6 +312,124 @@ void process_advanced_binarization(const std::string &input_path) {
         std::cerr << "Error: Failed to write Nick output image!" << std::endl;
     } else {
         std::cout << "Nick binarized image saved to: " << output_path_nick << std::endl;
+    }
+
+    stbi_image_free(image);
+}
+
+
+
+void computeIntegralImages(const unsigned char* gray,
+                           int width, int height,
+                           std::vector<double>& integralImg,
+                           std::vector<double>& integralImgSq)
+{
+    integralImg.resize(width * height, 0.0);
+    integralImgSq.resize(width * height, 0.0);
+
+    for (int y = 0; y < height; y++) {
+        double sumRow = 0.0, sumRowSq = 0.0;
+        for (int x = 0; x < width; x++) {
+            double val = static_cast<double>(gray[y * width + x]);
+            sumRow += val;
+            sumRowSq += val * val;
+
+            if (y == 0) {
+                integralImg[y * width + x] = sumRow;
+                integralImgSq[y * width + x] = sumRowSq;
+            } else {
+                integralImg[y * width + x] = integralImg[(y - 1) * width + x] + sumRow;
+                integralImgSq[y * width + x] = integralImgSq[(y - 1) * width + x] + sumRowSq;
+            }
+        }
+    }
+}
+
+inline double getSum(const std::vector<double>& integralImg,
+                     int x1, int y1, int x2, int y2, int width, int height)
+{
+    if (x1 < 0) x1 = 0; if (y1 < 0) y1 = 0;
+    if (x2 >= width) x2 = width - 1;
+    if (y2 >= height) y2 = height - 1;
+
+    double A = (x1 > 0 && y1 > 0) ? integralImg[(y1 - 1) * width + (x1 - 1)] : 0.0;
+    double B = (y1 > 0) ? integralImg[(y1 - 1) * width + x2] : 0.0;
+    double C = (x1 > 0) ? integralImg[y2 * width + (x1 - 1)] : 0.0;
+    double D = integralImg[y2 * width + x2];
+    return D + A - B - C;
+}
+
+void local_mean_std_integral(const std::vector<double>& integralImg,
+                             const std::vector<double>& integralImgSq,
+                             int width, int height,
+                             int x, int y, int half_win,
+                             float &mean, float &stddev)
+{
+    int x1 = x - half_win, y1 = y - half_win;
+    int x2 = x + half_win, y2 = y + half_win;
+    double area = (x2 - x1 + 1) * (y2 - y1 + 1);
+
+    double sum = getSum(integralImg, x1, y1, x2, y2, width, height);
+    double sumSq = getSum(integralImgSq, x1, y1, x2, y2, width, height);
+
+    double m = sum / area;
+    double var = (sumSq / area) - (m * m);
+    mean = static_cast<float>(m);
+    stddev = (var > 0.0) ? static_cast<float>(std::sqrt(var)) : 0.0f;
+}
+
+void sauvola_binarize_integral(const unsigned char* gray,
+                               unsigned char* out,
+                               int width, int height,
+                               int window_size,
+                               float k,
+                               float R)
+{
+    std::vector<double> integralImg, integralImgSq;
+    computeIntegralImages(gray, width, height, integralImg, integralImgSq);
+
+    int half_win = window_size / 2;
+    auto start = std::chrono::high_resolution_clock::now();
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            float mean = 0.f, stddev = 0.f;
+            local_mean_std_integral(integralImg, integralImgSq, width, height, x, y, half_win, mean, stddev);
+            float threshold = mean * (1.0f + k * ((stddev / R) - 1.0f));
+            out[y * width + x] = (gray[y * width + x] > threshold) ? 255 : 0;
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Integral Sauvola binarization time: " << duration.count() << " seconds." << std::endl;
+}
+
+void process_integral_binarization(const std::string &input_path) {
+    int width, height, channels;
+    unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
+    if (!image) {
+        std::cerr << "Error: Failed to load image!" << std::endl;
+        return;
+    }
+
+    std::vector<unsigned char> gray(width * height);
+#pragma omp parallel for
+    for (int i = 0; i < width * height; i++) {
+        gray[i] = static_cast<unsigned char>(
+                0.2126f * image[i * channels + 0] +
+                0.7152f * image[i * channels + 1] +
+                0.0722f * image[i * channels + 2]);
+    }
+
+    std::string output_path_integral = make_output_path(input_path) + "_integral_sauvola.png";
+    std::vector<unsigned char> output_integral(width * height);
+    sauvola_binarize_integral(gray.data(), output_integral.data(), width, height, 15, 0.2f, 128.0f);
+
+    if (!write_binary_image(output_path_integral, width, height, 1, output_integral.data())) {
+        std::cerr << "Error: Failed to write Integral Sauvola output image!" << std::endl;
+    } else {
+        std::cout << "Integral Sauvola binarized image saved to: " << output_path_integral << std::endl;
     }
 
     stbi_image_free(image);
