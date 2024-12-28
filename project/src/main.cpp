@@ -1,9 +1,22 @@
-// main.cpp
+#include <iostream>
+#include <string>
 #include "image_utils.h"
 #include "../external/spdlog/include/spdlog/spdlog.h"
 #include "../external/spdlog/include/spdlog/sinks/basic_file_sink.h"
 
+void displayMenu() {
+    std::cout << "\nChoose an operation:\n";
+    std::cout << "1. Sequential Binarization\n";
+    std::cout << "2. Parallel Binarization\n";
+    std::cout << "3. Advanced Binarization (Sauvola & Nick)\n";
+    std::cout << "4. Integral Image Binarization\n";
+    std::cout << "5. All Methods\n";
+    std::cout << "Enter your choice (1-5): ";
+}
+
 int main(int argc, char *argv[]) {
+    std::cout << "Program started, writing to output.log!" << std::endl;
+
     try {
         auto logger = spdlog::basic_logger_mt("file_logger", "logs/output.log");
         spdlog::set_default_logger(logger);
@@ -22,15 +35,44 @@ int main(int argc, char *argv[]) {
             output_path = argv[3];
         }
 
-        binarize_image(input_path, output_path, threshold);
-        binarize_image_parallel(input_path, output_path, threshold);
-        process_advanced_binarization(input_path);
-        process_integral_binarization(input_path);
+        int choice = 0;
+        while (choice < 1 || choice > 5) {
+            displayMenu();
+            std::cin >> choice;
+            if (std::cin.fail() || choice < 1 || choice > 5) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout << "Invalid input. Please enter a number between 1 and 5." << std::endl;
+                choice = 0;
+            }
+        }
+
+        switch (choice) {
+            case 1:
+                binarize_image(input_path, output_path, threshold);
+                break;
+            case 2:
+                binarize_image_parallel(input_path, output_path, threshold);
+                break;
+            case 3:
+                process_advanced_binarization(input_path);
+                break;
+            case 4:
+                process_integral_binarization(input_path);
+                break;
+            case 5:
+                binarize_image(input_path, output_path, threshold);
+                binarize_image_parallel(input_path, output_path, threshold);
+                process_advanced_binarization(input_path);
+                process_integral_binarization(input_path);
+                break;
+        }
 
         spdlog::info("***** Program finished successfully *****\n\n");
     } catch (const std::exception &e) {
         spdlog::critical("Unhandled exception: {}", e.what());
         return 1;
     }
+
     return 0;
 }

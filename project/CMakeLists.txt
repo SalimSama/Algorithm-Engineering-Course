@@ -9,9 +9,6 @@ find_package(OpenMP REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fopenmp")
 add_subdirectory(external/spdlog)
 
-# spdlog hinzufügen
-#find_package(spdlog REQUIRED)
-
 # Bibliothek erstellen
 add_library(image_utils STATIC src/image_utils.cpp)
 

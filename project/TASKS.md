@@ -4,19 +4,21 @@ CMake
 
 Gitignore (DONE)
 
+Logs (DONE)
+
 2 Algorithms implement (DONE)
 
 fix NICK ???
 
 Use Integral Images (DONE)
 
-Algorithm parallel
+Algorithm parallel (DONE)
 
-Alg. Vector.
+Algorithmus Vektorisieren
 
 Comments
 
-Library??
+Library (DONE)
 
 Usage Documentation  
 
