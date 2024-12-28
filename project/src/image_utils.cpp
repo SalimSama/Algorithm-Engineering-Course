@@ -9,33 +9,35 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <../include/stb_image.h>
 #include <../include/stb_image_write.h>
+#include <spdlog/spdlog.h>
 
 
 // Hilfsfunktion zum Schreiben eines ASCII-PPM
 bool write_ppm_ascii(const std::string &filename, int width, int height, int channels, const unsigned char *data) {
+    spdlog::info("Writing ASCII PPM file: {}", filename);
     std::ofstream ofs(filename, std::ios::binary);
     if (!ofs) {
+        spdlog::error("Failed to open file: {}", filename);
         return false;
     }
 
-    // ASCII-PPM Header (P3)
     ofs << "P3\n" << width << " " << height << "\n255\n";
 
-    // Für jeden Pixel die ersten drei Kanäle (RGB) schreiben
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             int idx = (y * width + x) * channels;
-            // Falls channels==4, ignorieren wir Alpha
-            unsigned char r = data[idx + 0];
+            unsigned char r = data[idx];
             unsigned char g = data[idx + 1];
             unsigned char b = data[idx + 2];
             ofs << (int)r << " " << (int)g << " " << (int)b << "\n";
         }
     }
+    spdlog::info("Successfully wrote ASCII PPM file: {}", filename);
     return true;
 }
 
 std::string make_output_path(const std::string &input_path) {
+    spdlog::info("Creating output path for input: {}", input_path);
     namespace fs = std::filesystem;
     fs::path p(input_path);
     std::string stem = p.stem().string();
@@ -44,34 +46,46 @@ std::string make_output_path(const std::string &input_path) {
     fs::path results_dir = "Results";
     if (!fs::exists(results_dir)) {
         fs::create_directory(results_dir);
+        spdlog::info("Created results directory: {}", results_dir.string());
     }
 
-    return (results_dir / (stem + "_bin" + ext)).string();
+    std::string output_path = (results_dir / (stem + "_bin" + ext)).string();
+    spdlog::info("Output path created: {}", output_path);
+    return output_path;
 }
 
-// Schreibt das binarisierte Bild als PNG/JPG oder ASCII-PPM.
 bool write_binary_image(const std::string &filename, int width, int height, int channels, const unsigned char *data) {
+    spdlog::info("Writing binary image to: {}", filename);
     std::string extension = std::filesystem::path(filename).extension().string();
     for (auto &c : extension) {
         c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     }
 
+    bool success = false;
     if (extension == ".png") {
-        return stbi_write_png(filename.c_str(), width, height, channels, data, width * channels);
+        success = stbi_write_png(filename.c_str(), width, height, channels, data, width * channels);
     } else if (extension == ".jpg" || extension == ".jpeg") {
-        return stbi_write_jpg(filename.c_str(), width, height, channels, data, 90);
+        success = stbi_write_jpg(filename.c_str(), width, height, channels, data, 90);
     } else if (extension == ".ppm") {
-        return write_ppm_ascii(filename, width, height, channels, data);
+        success = write_ppm_ascii(filename, width, height, channels, data);
+    } else {
+        success = stbi_write_png(filename.c_str(), width, height, channels, data, width * channels);
     }
-    // Fallback
-    return stbi_write_png(filename.c_str(), width, height, channels, data, width * channels);
+
+    if (success) {
+        spdlog::info("Successfully wrote binary image: {}", filename);
+    } else {
+        spdlog::error("Failed to write binary image: {}", filename);
+    }
+    return success;
 }
 
 void binarize_image(const std::string &input_path, std::string output_path, int threshold) {
+    spdlog::info("Starting sequential binarization with threshold {} for: {}", threshold, input_path);
     int width, height, channels;
     unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
     if (!image) {
-        std::cerr << "Error: Failed to load image!" << std::endl;
+        spdlog::error("Failed to load image: {}", input_path);
         return;
     }
 
@@ -80,7 +94,6 @@ void binarize_image(const std::string &input_path, std::string output_path, int 
     }
 
     std::vector<unsigned char> out(width * height * channels);
-
     auto start = std::chrono::high_resolution_clock::now();
 
     for (int i = 0; i < width * height; i++) {
@@ -97,21 +110,22 @@ void binarize_image(const std::string &input_path, std::string output_path, int 
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    std::cout << "Sequential binarization time: " << duration.count() << " seconds." << std::endl;
+    spdlog::info("Sequential binarization completed in {} seconds.", duration.count());
 
     if (!write_binary_image(output_path, width, height, channels, out.data())) {
-        std::cerr << "Error: Failed to write image! " << output_path << std::endl;
+        spdlog::error("Failed to write binarized image: {}", output_path);
     } else {
-        std::cout << "Binarized image saved to: " << output_path << std::endl;
+        spdlog::info("Binarized image saved to: {}", output_path);
     }
     stbi_image_free(image);
 }
 
 void binarize_image_parallel(const std::string &input_path, std::string output_path, int threshold) {
+    spdlog::info("Starting parallel binarization with threshold {} for: {}", threshold, input_path);
     int width, height, channels;
     unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
     if (!image) {
-        std::cerr << "Error: Failed to load image!" << std::endl;
+        spdlog::error("Failed to load image: {}", input_path);
         return;
     }
 
@@ -120,7 +134,6 @@ void binarize_image_parallel(const std::string &input_path, std::string output_p
     }
 
     std::vector<unsigned char> out(width * height * channels);
-
     auto start = std::chrono::high_resolution_clock::now();
 
 #pragma omp parallel for simd
@@ -138,34 +151,16 @@ void binarize_image_parallel(const std::string &input_path, std::string output_p
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    std::cout << "Parallel binarization time: " << duration.count() << " seconds." << std::endl;
+    spdlog::info("Parallel binarization completed in {} seconds.", duration.count());
 
     if (!write_binary_image(output_path, width, height, channels, out.data())) {
-        std::cerr << "Error: Failed to write image! " << output_path << std::endl;
+        spdlog::error("Failed to write parallel binarized image: {}", output_path);
     } else {
-        std::cout << "Parallel binarized image saved to: " << output_path << std::endl;
+        spdlog::info("Parallel binarized image saved to: {}", output_path);
     }
     stbi_image_free(image);
 }
 
-//bessere Methoden der Binarisierung:
-
-// Beispiel: Lokale Binarisierung nach Sauvola
-// T(x, y) = m(x, y) * [1 + k * (s(x, y)/R - 1)]
-// m(x, y): Lokaler Mittelwert
-// s(x, y): Lokale Standardabweichung
-// R: Dynamischer Bereich der Standardabweichung (oft 128)
-// k: Empirischer Faktor (z.B. 0.2 - 0.5)
-
-// Beispiel: Lokale Binarisierung nach Nick:
-// T(x, y) = m(x, y) + k * ( sqrt( (G² - n*m²)/n ) )
-// m(x, y) = lokaler Mittelwert in Fenstergroesse
-// G = Summe aller Grauwerte im lokalen Fenster
-// n = Anzahl Pixel im Fenster
-// k z.B. um 0.1 bis 0.2
-
-// Hilfsfunktion: lokales Mittel und Standardabweichung berechnen
-// (einfach, aber ineffizient; besser Integralbilder verwenden)
 void local_mean_std(const unsigned char* gray,
                     int width, int height,
                     int x, int y,
@@ -196,9 +191,10 @@ void sauvola_binarize(const unsigned char* gray,
                       unsigned char* out,
                       int width, int height,
                       int window_size,
-                      float k=0.2f,   // Empirischer Faktor
-                      float R=128.0f // Dynamischer Bereich
+                      float k,   // Empirischer Faktor
+                      float R // Dynamischer Bereich
 ) {
+    spdlog::info("Starting Sauvola binarization with window size {}, k={}, R={}.", window_size, k, R);
     int half_win = window_size / 2;
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -215,16 +211,15 @@ void sauvola_binarize(const unsigned char* gray,
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    std::cout << "Sauvola binarization time: " << duration.count() << " seconds." << std::endl;
+    spdlog::info("Sauvola binarization completed in {} seconds.", duration.count());
 }
 
-
-// Beispiel-Funktion: NICK-Binarisierung
 void nick_binarize(const unsigned char* gray,
                    unsigned char* out,
                    int width, int height,
                    int window_size,
-                   float k=0.1f) {
+                   float k) {
+    spdlog::info("Starting Nick binarization with window size {}, k={}.", window_size, k);
     int half_win = window_size / 2;
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -232,7 +227,6 @@ void nick_binarize(const unsigned char* gray,
 #pragma omp parallel for collapse(2)
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            // Summen für Nick berechnen
             float sum = 0.0f;
             int count = 0;
             for (int dy = -half_win; dy <= half_win; dy++) {
@@ -246,7 +240,6 @@ void nick_binarize(const unsigned char* gray,
                 }
             }
             float mean = sum / count;
-            // Varianz / Standardabweichung
             float sum_sq = 0.0f;
             for (int dy = -half_win; dy <= half_win; dy++) {
                 for (int dx = -half_win; dx <= half_win; dx++) {
@@ -260,7 +253,6 @@ void nick_binarize(const unsigned char* gray,
             }
             float variance = sum_sq / count;
             float stddev = std::sqrt(variance);
-            // Nick-Formel: T = m + k * sqrt( (G^2 - n*m^2)/n )
             float T = mean + k * stddev;
             out[y * width + x] = (gray[y * width + x] > T) ? 255 : 0;
         }
@@ -268,19 +260,18 @@ void nick_binarize(const unsigned char* gray,
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    std::cout << "Nick binarization time: " << duration.count() << " seconds." << std::endl;
+    spdlog::info("Nick binarization completed in {} seconds.", duration.count());
 }
 
-
 void process_advanced_binarization(const std::string &input_path) {
+    spdlog::info("Processing advanced binarization for: {}", input_path);
     int width, height, channels;
     unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
     if (!image) {
-        std::cerr << "Error: Failed to load image!" << std::endl;
+        spdlog::error("Failed to load image: {}", input_path);
         return;
     }
 
-    // Grauwert-Umwandlung
     std::vector<unsigned char> gray(width * height);
 #pragma omp parallel for
     for (int i = 0; i < width * height; i++) {
@@ -290,28 +281,25 @@ void process_advanced_binarization(const std::string &input_path) {
                 0.0722f * image[i * channels + 2]);
     }
 
-    // Dynamische Pfade für die Ausgabedateien
     std::string output_path_sauvola = make_output_path(input_path) + "_sauvola.png";
     std::string output_path_nick = make_output_path(input_path) + "_nick.png";
 
-    // Sauvola-Binarisierung
     std::vector<unsigned char> output_sauvola(width * height);
     sauvola_binarize(gray.data(), output_sauvola.data(), width, height, 15, 0.2f, 128.0f);
 
     if (!write_binary_image(output_path_sauvola, width, height, 1, output_sauvola.data())) {
-        std::cerr << "Error: Failed to write Sauvola output image!" << std::endl;
+        spdlog::error("Failed to write Sauvola output image: {}", output_path_sauvola);
     } else {
-        std::cout << "Sauvola binarized image saved to: " << output_path_sauvola << std::endl;
+        spdlog::info("Sauvola binarized image saved to: {}", output_path_sauvola);
     }
 
-    // Nick-Binarisierung
     std::vector<unsigned char> output_nick(width * height);
     nick_binarize(gray.data(), output_nick.data(), width, height, 15, 0.1f);
 
     if (!write_binary_image(output_path_nick, width, height, 1, output_nick.data())) {
-        std::cerr << "Error: Failed to write Nick output image!" << std::endl;
+        spdlog::error("Failed to write Nick output image: {}", output_path_nick);
     } else {
-        std::cout << "Nick binarized image saved to: " << output_path_nick << std::endl;
+        spdlog::info("Nick binarized image saved to: {}", output_path_nick);
     }
 
     stbi_image_free(image);
@@ -391,8 +379,8 @@ void sauvola_binarize_integral(const unsigned char* gray,
                                int width, int height,
                                int window_size,
                                float k,
-                               float R)
-{
+                               float R) {
+    spdlog::info("Starting Integral Sauvola binarization with window size {}, k={}, R={}.", window_size, k, R);
     std::vector<double> integralImg, integralImgSq;
     computeIntegralImages(gray, width, height, integralImg, integralImgSq);
 
@@ -411,14 +399,15 @@ void sauvola_binarize_integral(const unsigned char* gray,
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    std::cout << "Integral Sauvola binarization time: " << duration.count() << " seconds." << std::endl;
+    spdlog::info("Integral Sauvola binarization completed in {} seconds.", duration.count());
 }
 
 void process_integral_binarization(const std::string &input_path) {
+    spdlog::info("Processing integral binarization for: {}", input_path);
     int width, height, channels;
     unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
     if (!image) {
-        std::cerr << "Error: Failed to load image!" << std::endl;
+        spdlog::error("Failed to load image: {}", input_path);
         return;
     }
 
@@ -436,13 +425,14 @@ void process_integral_binarization(const std::string &input_path) {
     sauvola_binarize_integral(gray.data(), output_integral.data(), width, height, 15, 0.2f, 128.0f);
 
     if (!write_binary_image(output_path_integral, width, height, 1, output_integral.data())) {
-        std::cerr << "Error: Failed to write Integral Sauvola output image!" << std::endl;
+        spdlog::error("Failed to write Integral Sauvola output image: {}", output_path_integral);
     } else {
-        std::cout << "Integral Sauvola binarized image saved to: " << output_path_integral << std::endl;
+        spdlog::info("Integral Sauvola binarized image saved to: {}", output_path_integral);
     }
 
     stbi_image_free(image);
 }
+
 
 
 

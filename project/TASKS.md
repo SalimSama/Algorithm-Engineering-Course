@@ -6,7 +6,7 @@ Gitignore (DONE)
 
 2 Algorithms implement (DONE)
 
-fix NICK
+fix NICK ???
 
 Use Integral Images (DONE)
 
