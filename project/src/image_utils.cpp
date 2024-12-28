@@ -1,4 +1,4 @@
-#include <image_utils.h>
+#include <../include/image_utils.h>
 #include <iostream>
 #include <fstream>
 #include <filesystem>
@@ -7,8 +7,8 @@
 #include <omp.h>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image.h>
-#include <stb_image_write.h>
+#include <../include/stb_image.h>
+#include <../include/stb_image_write.h>
 
 
 // Hilfsfunktion zum Schreiben eines ASCII-PPM

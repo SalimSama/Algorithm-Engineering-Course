@@ -4,11 +4,16 @@ project(Binarize_Algo_Eng VERSION 1.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+
 find_package(OpenMP REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fopenmp")
 
-# Quelldateien
-add_executable(project main.cpp image_utils.cpp)
+# Bibliothek erstellen
+add_library(image_utils STATIC src/image_utils.cpp)
 
-# Include-Directory
-target_include_directories(project PRIVATE ${CMAKE_SOURCE_DIR})
+# Header-Dateien verlinken
+target_include_directories(image_utils PUBLIC ${CMAKE_SOURCE_DIR}/include)
+
+# Hauptprogramm erstellen und mit Bibliothek verlinken
+add_executable(project src/main.cpp)
+target_link_libraries(project PRIVATE image_utils OpenMP::OpenMP_CXX)
