@@ -1,5 +1,19 @@
 # Project Tasks
 
+
+doppelte Logik reduzieren, wenn möglich.
+→ man kann mehr Unter- oder Hilfsfunktionen einbauen
+
+
+dem Benutzer erlauben, Parameter wie die Kernelgröße, den Schwellenwert und den Dynamikbereich zur Laufzeit einzustellen.
+
+Fragen: soll man alle Bilder unterstützen?  
+muss die Ausgabe genau wie die Einagbe sein? oder reicht PNG für alle?
+
+
+binarize_image_parallel output ändern, also anders als normal
+
+
 CMake  
 
 Gitignore (DONE)
