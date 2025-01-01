@@ -187,31 +187,47 @@ void local_mean_std(const unsigned char* gray,
 }
 
 // Beispiel-Funktion: Sauvola-Binarisierung
-void sauvola_binarize(const unsigned char* gray,
-                      unsigned char* out,
-                      int width, int height,
-                      int window_size,
-                      float k,   // Empirischer Faktor
-                      float R // Dynamischer Bereich
-) {
-    spdlog::info("Starting Sauvola binarization with window size {}, k={}, R={}.", window_size, k, R);
+void adaptive_binarize(const unsigned char* gray,
+                       unsigned char* out,
+                       int width, int height,
+                       int window_size,
+                       const std::function<float(float mean, float stddev)> &threshold_func) {
     int half_win = window_size / 2;
+
+    spdlog::info("Starting adaptive binarization with window size {}");
 
     auto start = std::chrono::high_resolution_clock::now();
 
-#pragma omp parallel for collapse(2)
+    #pragma omp parallel for collapse(2)
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             float mean = 0.0f, stddev = 0.0f;
             local_mean_std(gray, width, height, x, y, half_win, mean, stddev);
-            float threshold = mean * (1.0f + k * ((stddev / R) - 1.0f));
+            float threshold = threshold_func(mean, stddev);
             out[y * width + x] = (gray[y * width + x] > threshold) ? 255 : 0;
         }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    spdlog::info("Sauvola binarization completed in {} seconds.", duration.count());
+    spdlog::info("Adaptive binarization completed in {} seconds.", duration.count());
+}
+
+void sauvola_binarize(const unsigned char* gray,
+                      unsigned char* out,
+                      int width, int height,
+                      int window_size,
+                      float k,
+                      float R) {
+    spdlog::info("Starting Sauvola binarization with window size {}, k={}, R={}.", window_size, k, R);
+
+    auto threshold_func = [k, R](float mean, float stddev) {
+        return mean * (1.0f + k * ((stddev / R) - 1.0f));
+    };
+
+    adaptive_binarize(gray, out, width, height, window_size, threshold_func);
+
+    spdlog::info("Sauvola binarization completed.");
 }
 
 void nick_binarize(const unsigned char* gray,
@@ -220,47 +236,14 @@ void nick_binarize(const unsigned char* gray,
                    int window_size,
                    float k) {
     spdlog::info("Starting Nick binarization with window size {}, k={}.", window_size, k);
-    int half_win = window_size / 2;
 
-    auto start = std::chrono::high_resolution_clock::now();
+    auto threshold_func = [k](float mean, float stddev) {
+        return mean + k * stddev;
+    };
 
-#pragma omp parallel for collapse(2)
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            float sum = 0.0f;
-            int count = 0;
-            for (int dy = -half_win; dy <= half_win; dy++) {
-                for (int dx = -half_win; dx <= half_win; dx++) {
-                    int yy = y + dy;
-                    int xx = x + dx;
-                    if (xx >= 0 && yy >= 0 && xx < width && yy < height) {
-                        sum += gray[yy * width + xx];
-                        count++;
-                    }
-                }
-            }
-            float mean = sum / count;
-            float sum_sq = 0.0f;
-            for (int dy = -half_win; dy <= half_win; dy++) {
-                for (int dx = -half_win; dx <= half_win; dx++) {
-                    int yy = y + dy;
-                    int xx = x + dx;
-                    if (xx >= 0 && yy >= 0 && xx < width && yy < height) {
-                        float val = gray[yy * width + xx];
-                        sum_sq += (val - mean) * (val - mean);
-                    }
-                }
-            }
-            float variance = sum_sq / count;
-            float stddev = std::sqrt(variance);
-            float T = mean + k * stddev;
-            out[y * width + x] = (gray[y * width + x] > T) ? 255 : 0;
-        }
-    }
+    adaptive_binarize(gray, out, width, height, window_size, threshold_func);
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start;
-    spdlog::info("Nick binarization completed in {} seconds.", duration.count());
+    spdlog::info("Nick binarization completed.");
 }
 
 void process_advanced_binarization(const std::string &input_path) {
@@ -273,7 +256,7 @@ void process_advanced_binarization(const std::string &input_path) {
     }
 
     std::vector<unsigned char> gray(width * height);
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < width * height; i++) {
         gray[i] = static_cast<unsigned char>(
                 0.2126f * image[i * channels + 0] +
@@ -283,6 +266,8 @@ void process_advanced_binarization(const std::string &input_path) {
 
     std::string output_path_sauvola = make_output_path(input_path) + "_sauvola.png";
     std::string output_path_nick = make_output_path(input_path) + "_nick.png";
+
+    auto start = std::chrono::high_resolution_clock::now();
 
     std::vector<unsigned char> output_sauvola(width * height);
     sauvola_binarize(gray.data(), output_sauvola.data(), width, height, 15, 0.2f, 128.0f);
@@ -302,8 +287,13 @@ void process_advanced_binarization(const std::string &input_path) {
         spdlog::info("Nick binarized image saved to: {}", output_path_nick);
     }
 
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    spdlog::info("Advanced binarization process completed in {} seconds.", duration.count());
+
     stbi_image_free(image);
 }
+
 
 
 
