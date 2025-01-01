@@ -364,32 +364,51 @@ void local_mean_std_integral(const std::vector<double>& integralImg,
     stddev = (var > 0.0) ? static_cast<float>(std::sqrt(var)) : 0.0f;
 }
 
-void sauvola_binarize_integral(const unsigned char* gray,
-                               unsigned char* out,
-                               int width, int height,
-                               int window_size,
-                               float k,
-                               float R) {
-    spdlog::info("Starting Integral Sauvola binarization with window size {}, k={}, R={}.", window_size, k, R);
-    std::vector<double> integralImg, integralImgSq;
-    computeIntegralImages(gray, width, height, integralImg, integralImgSq);
-
+void adaptive_binarize_integral(const unsigned char* gray,
+                       unsigned char* out,
+                       int width, int height,
+                       int window_size,
+                       const std::vector<double>& integralImg,
+                       const std::vector<double>& integralImgSq,
+                       const std::function<float(float mean, float stddev)> &threshold_func) {
     int half_win = window_size / 2;
+
+    spdlog::info("Starting adaptive integral binarization with window size {}");
+
     auto start = std::chrono::high_resolution_clock::now();
 
-#pragma omp parallel for collapse(2)
+    #pragma omp parallel for collapse(2)
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            float mean = 0.f, stddev = 0.f;
+            float mean = 0.0f, stddev = 0.0f;
             local_mean_std_integral(integralImg, integralImgSq, width, height, x, y, half_win, mean, stddev);
-            float threshold = mean * (1.0f + k * ((stddev / R) - 1.0f));
+            float threshold = threshold_func(mean, stddev);
             out[y * width + x] = (gray[y * width + x] > threshold) ? 255 : 0;
         }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    spdlog::info("Integral Sauvola binarization completed in {} seconds.", duration.count());
+    spdlog::info("Adaptive integral binarization completed in {} seconds.", duration.count());
+}
+
+void sauvola_binarize_integral(const unsigned char* gray,
+                               unsigned char* out,
+                               int width, int height,
+                               int window_size,
+                               float k,
+                               float R,
+                               const std::vector<double>& integralImg,
+                               const std::vector<double>& integralImgSq) {
+    spdlog::info("Starting Integral Sauvola binarization with window size {}, k={}, R={}.", window_size, k, R);
+
+    auto threshold_func = [k, R](float mean, float stddev) {
+        return mean * (1.0f + k * ((stddev / R) - 1.0f));
+    };
+
+    adaptive_binarize_integral(gray, out, width, height, window_size, integralImg, integralImgSq, threshold_func);
+
+    spdlog::info("Integral Sauvola binarization completed.");
 }
 
 void process_integral_binarization(const std::string &input_path) {
@@ -402,7 +421,7 @@ void process_integral_binarization(const std::string &input_path) {
     }
 
     std::vector<unsigned char> gray(width * height);
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < width * height; i++) {
         gray[i] = static_cast<unsigned char>(
                 0.2126f * image[i * channels + 0] +
@@ -410,15 +429,25 @@ void process_integral_binarization(const std::string &input_path) {
                 0.0722f * image[i * channels + 2]);
     }
 
+    std::vector<double> integralImg, integralImgSq;
+    computeIntegralImages(gray.data(), width, height, integralImg, integralImgSq);
+
     std::string output_path_integral = make_output_path(input_path) + "_integral_sauvola.png";
     std::vector<unsigned char> output_integral(width * height);
-    sauvola_binarize_integral(gray.data(), output_integral.data(), width, height, 15, 0.2f, 128.0f);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    sauvola_binarize_integral(gray.data(), output_integral.data(), width, height, 15, 0.2f, 128.0f, integralImg, integralImgSq);
 
     if (!write_binary_image(output_path_integral, width, height, 1, output_integral.data())) {
         spdlog::error("Failed to write Integral Sauvola output image: {}", output_path_integral);
     } else {
         spdlog::info("Integral Sauvola binarized image saved to: {}", output_path_integral);
     }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    spdlog::info("Integral binarization process completed in {} seconds.", duration.count());
 
     stbi_image_free(image);
 }
