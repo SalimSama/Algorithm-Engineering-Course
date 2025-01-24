@@ -30,6 +30,12 @@ Algorithm parallel (DONE)
 
 Algorithmus Vektorisieren
 
+Adaptive median filter (ungetestet)
+
+Make use of byte alignment
+
+Try structure of arrays
+
 Comments
 
 Library (DONE)
