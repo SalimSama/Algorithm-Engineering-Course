@@ -25,5 +25,6 @@ void sauvola_binarize_integral(const unsigned char* gray, unsigned char* out, in
 
 void process_integral_binarization(const std::string &input_path);
 
+void adaptive_median_filter_test(const std::string &input_path, const std::string &output_path);
 
 #endif // IMAGE_UTILS_H

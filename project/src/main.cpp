@@ -11,6 +11,7 @@ void displayMenu() {
     std::cout << "3. Advanced Binarization (Sauvola & Nick)\n";
     std::cout << "4. Integral Image Binarization\n";
     std::cout << "5. All Methods\n";
+    std::cout << "6. Apply adaptive median filter\n";
     std::cout << "Enter your choice (1-5): ";
 }
 
@@ -65,6 +66,9 @@ int main(int argc, char *argv[]) {
                 binarize_image_parallel(input_path, output_path, threshold);
                 process_advanced_binarization(input_path);
                 process_integral_binarization(input_path);
+                break;
+            case 6:
+                adaptive_median_filter_test(input_path, output_path);
                 break;
         }
 
