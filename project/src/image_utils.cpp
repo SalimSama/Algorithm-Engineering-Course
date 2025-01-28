@@ -89,6 +89,8 @@ void binarize_image(const std::string &input_path, std::string output_path, int 
         return;
     }
 
+    std::cout << "Number of channels " << channels << std::endl;
+
     if (output_path.empty()) {
         output_path = make_output_path(input_path);
     }
@@ -504,34 +506,60 @@ std::vector<unsigned char> get_window(unsigned char *image,
 
 void increase_window_size(unsigned char *image, std::vector<unsigned char> *temp_window, int old_winsize,
                             const int width, const int height, const int xpos, const int ypos) {
+
     // go one row up, down, left and right and push everything onto temp_window
+
+    //std::cout << "WINDOW SIZE INCREASED with width image " << width << " and height " << height << std::endl;
+    // std::cout << "The initial positions are xpos = " << xpos << ", ypos = " << ypos << "." << std::endl;
+
     int half_win = old_winsize/2;
+    // std::cout << half_win << " is half the window size \n";
+
 
     // row over the window needs to be inserted, if it is still inside the image
     for (int x = xpos - half_win -1; x <= xpos + half_win + 1; x++) {
-        if (ypos - half_win - 1 >= 0) {
+        //std::cout << x << "\n";
+        if (ypos - half_win - 1 >= 0 && x >= 0 && x <= width - 1) {         // 1 2 pos 4 5 wenn aktuelles x im Bild ist kommt es rein
+            //std::cout << "Condition: " << ypos-half_win - 1 << std::endl;
+            // std::cout << "Inserted in window! Case 1 \n";
+            // std::cout << "Position " << x << ", " << ypos << std::endl;
             temp_window->push_back(image[(ypos - half_win - 1) * width + x]);
         }
 
         // the same goes for the row below the window
-        if (ypos + half_win + 1 <= height - 1) {
+        if (ypos + half_win + 1 <= height - 1 && x >= 0 && x <= width - 1) {
+            // std::cout << "Condition: " << ypos-half_win + 1 << std::endl;
+            // std::cout << "Inserted in window! Case 2 \n";
+            // std::cout << "Position " << x << ", " << ypos << std::endl;
             temp_window->push_back(image[(ypos + half_win + 1) * width + x]);
         }
     }
 
     for (int y = ypos - half_win; y <= ypos + half_win; y++) {
-        if (xpos - half_win - 1 >= 0) {
+        if (xpos - half_win - 1 >= 0 && y >= 0 && y <= height -1) {
+            // std::cout << "Inserted in window! Case 3 \n";
+            // std::cout << "Position " << xpos << ", " << y << std::endl;
             temp_window->push_back(image[y * width + xpos - half_win -1]);
         }
-        if (xpos + half_win + 1 <= width - 1) {
+        if (xpos + half_win + 1 <= width - 1 && y >= 0 && y <= height - 1) {
+            // std::cout << "Inserted in window! Case 4 \n";
+            // std::cout << "Position " << xpos << ", " << y << std::endl;
             temp_window->push_back(image[y * width + xpos + half_win + 1]);
         }
     }
+
+    // std::cout << std::endl << std::endl;
 
 }
 
 bool comp(unsigned char a, unsigned char b) {
     return a > b;
+}
+
+void print_vec(const std::vector<unsigned char>& vec) {
+    // for (unsigned char i: vec) {
+    //     std::cout << i << " ";
+    // }
 }
 
 void adaptive_median_filter(unsigned char *image, const int width, const int height, const int channels,
@@ -544,19 +572,25 @@ void adaptive_median_filter(unsigned char *image, const int width, const int hei
     std::vector<unsigned char> temp_window;
     unsigned char local_median, local_max, local_min = 0;
     int current_win_size;
-
-#pragma omp parallel for
-    for (int y = 0; y < width; y++) {
-        for (int x = 0; x < height; x++) {
+    std::cout << "Maße " << width << " " << height << std::endl;
+// #pragma omp parallel for
+    for (int y = 0; y < height - 1; y++) {
+        for (int x = 0; x < width - 1; x++) {
+            // std::cout << "Process position "<< x << " " << y << std::endl ;
             bool flag = false; // have we calculated the pixel or not flag
+
+            // RACE CONDITION, new window for each thread
             temp_window.clear(); // clear the window
-            temp_window.push_back(image[y * width + x]); // only insert the pixel at the position
+            temp_window.push_back(image[y * width + x]); // only insert the pixel at the current position
             current_win_size = 1; // keep track of the window size
 
             while (current_win_size != min_win_size) { // increase the window size until we reach the minimum size requirements
-                increase_window_size(image, &temp_window, current_win_size, width, height, 0, 0);
+                print_vec(temp_window);
+                increase_window_size(image, &temp_window, current_win_size, width, height, x, y);
                 current_win_size++;
+
             }
+            // std::cout << "ESCAPED WHILE 1 " << std::endl;
 
             int pos = y * width + x;
             unsigned char pxl = image[pos];
@@ -596,10 +630,11 @@ void adaptive_median_filter(unsigned char *image, const int width, const int hei
 
 
 void adaptive_median_filter_test(const std::string &input_path, std::string output_path) {
-
     spdlog::info("Starting adaptive median filter ");
     int width, height, channels;
     unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
+    std::cout << "Image size: " << width * height << std::endl; // PROBLEM: RAN OUT OF STACK MEMORY; HAVE TO REWRITE IT AS A HEAP INSTEAD APPARENTLY
+
     if (!image) {
         spdlog::error("Failed to load image: {}", input_path);
         return;
@@ -608,9 +643,22 @@ void adaptive_median_filter_test(const std::string &input_path, std::string outp
     if (output_path.empty()) {
         output_path = make_output_path(input_path);
     }
-    std::vector<unsigned char> out(width * height * channels);
 
-    adaptive_median_filter(image, width, height, channels, 3, 10);
+    unsigned char gray[width * height];
+
+#pragma omp parallel for
+    for (int i = 0; i < width * height; i++) {
+        gray[i] = static_cast<unsigned char>(
+                0.2126f * image[i * channels + 0] +
+                0.7152f * image[i * channels + 1] +
+                0.0722f * image[i * channels + 2]);
+    }
+
+    // TURN THE IMAGE INTO INTENSITY IMAGE
+    int n = sizeof(gray) / sizeof(gray[0]);
+
+    std::vector<unsigned char> out(gray, gray + n); //converts image array to vector
+    adaptive_median_filter(gray, width, height, channels, 3, 10);
 
     if (!write_binary_image(output_path, width, height, channels, out.data())) {
         spdlog::error("Failed to write filtered image: {}", output_path);
@@ -621,3 +669,4 @@ void adaptive_median_filter_test(const std::string &input_path, std::string outp
     stbi_image_free(image);
 
 }
+

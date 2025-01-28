@@ -36,8 +36,8 @@ int main(int argc, char *argv[]) {
             output_path = argv[3];
         }
 
-        int choice = 0;
-        while (choice < 1 || choice > 5) {
+        int choice = 6;
+        while (choice < 1 || choice > 6) {
             displayMenu();
             std::cin >> choice;
             if (std::cin.fail() || choice < 1 || choice > 5) {
