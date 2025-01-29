@@ -481,31 +481,31 @@ void majority_vote(const std::string &input_path, std::string output_path) {
 
 
 
-std::vector<unsigned char> get_window(unsigned char *image,
+std::vector<unsigned char> get_window(std::vector<unsigned char> *image,
                                       int width, int height,
                                       int x, int y,
                                       int window_size)
 {
-    std::vector<unsigned char> output_window(window_size * window_size);
-    const int half_win = window_size / 2;
-    unsigned int array_pos = 0;
-    for (int dy = -half_win; dy <= half_win; dy++) {
-        for (int dx = -half_win; dx <= half_win; dx++) {
-            array_pos += 1;
-            int yy = y + dy;
-            int xx = x + dx;
-            if (xx >= 0 && yy >= 0 && xx < width && yy < height) {
-                output_window[array_pos] = image[xx * width + yy];
-            }
-        }
-    }
-
-    return output_window;
+    // std::vector<unsigned char> output_window(window_size * window_size);
+    // const int half_win = window_size / 2;
+    // unsigned int array_pos = 0;
+    // for (int dy = -half_win; dy <= half_win; dy++) {
+    //     for (int dx = -half_win; dx <= half_win; dx++) {
+    //         array_pos += 1;
+    //         int yy = y + dy;
+    //         int xx = x + dx;
+    //         if (xx >= 0 && yy >= 0 && xx < width && yy < height) {
+    //             output_window[array_pos] = image[xx * width + yy];
+    //         }
+    //     }
+    // }
+    //
+    // return output_window;
 
 }
 
-void increase_window_size(unsigned char *image, std::vector<unsigned char> *temp_window, int old_winsize,
-                            const int width, const int height, const int xpos, const int ypos) {
+void increase_window_size(const std::vector<unsigned char> &image, std::vector<unsigned char> *temp_window, int old_winsize,
+                          const int width, const int height, const int xpos, const int ypos) {
 
     // go one row up, down, left and right and push everything onto temp_window
 
@@ -553,7 +553,7 @@ void increase_window_size(unsigned char *image, std::vector<unsigned char> *temp
 }
 
 bool comp(unsigned char a, unsigned char b) {
-    return a > b;
+    return a < b;
 }
 
 void print_vec(const std::vector<unsigned char>& vec) {
@@ -562,29 +562,29 @@ void print_vec(const std::vector<unsigned char>& vec) {
     // }
 }
 
-void adaptive_median_filter(unsigned char *image, const int width, const int height, const int channels,
+void adaptive_median_filter(std::vector<unsigned char> *image, const int width, const int height, const int channels,
                             int min_win_size, int max_window_size) {
-    if (!image) {
-        std::cout << "Null pointer in adaptive_median_filter \n" ;
-        return;
-    }
+    // if (!image) {
+    //     std::cout << "Null pointer in adaptive_median_filter \n" ;
+    //     return;
+    // }
 
     std::vector<unsigned char> temp_window;
     unsigned char local_median, local_max, local_min = 0;
     int current_win_size;
-    std::cout << "Maße " << width << " " << height << std::endl;
+    // std::cout << "Maße " << width << " " << height << std::endl;
 // #pragma omp parallel for
-    for (int y = 0; y < height - 1; y++) {
+    for (int y = 0; y < height - 1; y++) { // iterate over all pixels
         for (int x = 0; x < width - 1; x++) {
-            // std::cout << "Process position "<< x << " " << y << std::endl ;
-            bool flag = false; // have we calculated the pixel or not flag
+            std::cout << "Process position "<< x << " " << y << std::endl ;
+            bool flag = false; // "have we calculated the pixel or not"-flag
 
             // RACE CONDITION, new window for each thread
             temp_window.clear(); // clear the window
             temp_window.push_back(image[y * width + x]); // only insert the pixel at the current position
             current_win_size = 1; // keep track of the window size
 
-            while (current_win_size != min_win_size) { // increase the window size until we reach the minimum size requirements
+            while (current_win_size < min_win_size) { // increase the window size until we reach the minimum size requirements
                 print_vec(temp_window);
                 increase_window_size(image, &temp_window, current_win_size, width, height, x, y);
                 current_win_size++;
@@ -596,17 +596,17 @@ void adaptive_median_filter(unsigned char *image, const int width, const int hei
             unsigned char pxl = image[pos];
 
             // find min, find max, find median
-            sort(temp_window.begin(), temp_window.end(), comp);
-            local_median = temp_window[temp_window.size() / 2];
-            local_max = temp_window[temp_window.size()-1];
-            local_min = temp_window[0];
+            sort(temp_window.begin(), temp_window.end(), comp); // sort the temp window
+            local_median = temp_window[temp_window.size() / 2]; // the pixel in the center of the sorted list will be the median
+            local_max = temp_window[temp_window.size()-1]; // the last one is the maximum
+            local_min = temp_window[0]; // the first one is the minimum
 
-            while (flag == false && current_win_size < max_window_size) {       // while we haven't found the pixel or reached the max size
+            while (flag == false && current_win_size < max_window_size) {       // while we haven't found the pixel or haven't reached the max size
                 if (local_median > local_min && local_median < local_max) {
                     if (pxl > local_min && pxl < local_max) {
-                        flag = true; // simply keep the pixel's vale
+                        flag = true; // simply keep the pixel's value
                     } else {
-                        image[pos] = local_median; // set the value as the local median
+                        image[pos] = local_median;  // set the value as the local median
                     }
                 } else {
                     increase_window_size(image, &temp_window, current_win_size, width, height, x, y); // increase the window size
@@ -629,11 +629,27 @@ void adaptive_median_filter(unsigned char *image, const int width, const int hei
 };
 
 
+void adaptive_median_filter_v2(std::vector<unsigned char> image, const int width, const int height, const int channels,
+                            int min_win_size, int max_window_size) {
+    // first lets try a simple median filter
+
+    std::vector<unsigned char> temp_window;
+
+    for (int y = 0; y < height - 1; y++) {
+        for (int x = 0; x < width - 1; x++) {
+            temp_window.clear();
+            temp_window = get_window(&image, width, height, x, y, max_window_size);
+            sort(temp_window.begin(), temp_window.end(), comp);
+            image[y * width + x] = temp_window[temp_window.size() / 2];
+        }
+    }
+}
+
+
 void adaptive_median_filter_test(const std::string &input_path, std::string output_path) {
     spdlog::info("Starting adaptive median filter ");
     int width, height, channels;
     unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
-    std::cout << "Image size: " << width * height << std::endl; // PROBLEM: RAN OUT OF STACK MEMORY; HAVE TO REWRITE IT AS A HEAP INSTEAD APPARENTLY
 
     if (!image) {
         spdlog::error("Failed to load image: {}", input_path);
@@ -644,7 +660,7 @@ void adaptive_median_filter_test(const std::string &input_path, std::string outp
         output_path = make_output_path(input_path);
     }
 
-    unsigned char gray[width * height];
+    std::vector<unsigned char> gray(width * height);
 
 #pragma omp parallel for
     for (int i = 0; i < width * height; i++) {
@@ -654,13 +670,11 @@ void adaptive_median_filter_test(const std::string &input_path, std::string outp
                 0.0722f * image[i * channels + 2]);
     }
 
-    // TURN THE IMAGE INTO INTENSITY IMAGE
-    int n = sizeof(gray) / sizeof(gray[0]);
+    // adaptive_median_filter(&gray, width, height, 1, 3, 10);
 
-    std::vector<unsigned char> out(gray, gray + n); //converts image array to vector
-    adaptive_median_filter(gray, width, height, channels, 3, 10);
+    adaptive_median_filter_v2(gray, width, height, 1, 3, 10);
 
-    if (!write_binary_image(output_path, width, height, channels, out.data())) {
+    if (!write_binary_image(output_path, width, height, 1, gray.data())) {
         spdlog::error("Failed to write filtered image: {}", output_path);
     } else {
         spdlog::info("Filtered image saved to: {}", output_path);
