@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include "image_utils.h"
+#include "adaptive_median_filter.h"
 #include "../external/spdlog/include/spdlog/spdlog.h"
 #include "../external/spdlog/include/spdlog/sinks/basic_file_sink.h"
 
@@ -68,7 +69,7 @@ int main(int argc, char *argv[]) {
                 process_integral_binarization(input_path);
                 break;
             case 6:
-                adaptive_median_filter_test(input_path, output_path);
+                adaptive_median_filter(input_path, output_path);
                 break;
         }
 

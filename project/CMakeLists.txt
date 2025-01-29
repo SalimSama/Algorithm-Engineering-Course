@@ -10,7 +10,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fopenmp")
 add_subdirectory(external/spdlog)
 
 # Bibliothek erstellen
-add_library(image_utils STATIC src/image_utils.cpp)
+add_library(image_utils STATIC src/image_utils.cpp
+        include/adaptive_median_filter.h
+        src/adaptive_median_filter.cpp)
+
 
 # Header-Dateien verlinken
 target_include_directories(image_utils PUBLIC ${CMAKE_SOURCE_DIR}/include)
