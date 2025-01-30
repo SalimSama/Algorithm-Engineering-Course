@@ -13,6 +13,10 @@ muss die Ausgabe genau wie die Einagbe sein? oder reicht PNG für alle?
 
 binarize_image_parallel output ändern, also anders als normal
 
+Interface + Documentation
+Flags 
+
+
 
 CMake  
 

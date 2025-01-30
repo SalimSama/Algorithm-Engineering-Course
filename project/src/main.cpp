@@ -67,6 +67,7 @@ int main(int argc, char *argv[]) {
                 binarize_image_parallel(input_path, output_path, threshold);
                 process_advanced_binarization(input_path);
                 process_integral_binarization(input_path);
+                adaptive_median_filter(input_path, output_path);
                 break;
             case 6:
                 adaptive_median_filter(input_path, output_path);
