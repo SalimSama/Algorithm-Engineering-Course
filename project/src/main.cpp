@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include "image_utils.h"
-#include "adaptive_median_filter.h"
 #include "../external/spdlog/include/spdlog/spdlog.h"
 #include "../external/spdlog/include/spdlog/sinks/basic_file_sink.h"
 
@@ -37,7 +36,7 @@ int main(int argc, char *argv[]) {
             output_path = argv[3];
         }
 
-        int choice = 6;
+        int choice = 0;
         while (choice < 1 || choice > 6) {
             displayMenu();
             std::cin >> choice;

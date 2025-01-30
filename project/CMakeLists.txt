@@ -6,13 +6,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 find_package(OpenMP REQUIRED)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fopenmp")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -fopenmp -ffast-math -funroll-loops")
 add_subdirectory(external/spdlog)
 
 # Bibliothek erstellen
 add_library(image_utils STATIC src/image_utils.cpp
-        include/adaptive_median_filter.h
-        src/adaptive_median_filter.cpp)
+)
 
 
 # Header-Dateien verlinken

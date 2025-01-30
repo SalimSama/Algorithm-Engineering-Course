@@ -89,8 +89,6 @@ void binarize_image(const std::string &input_path, std::string output_path, int 
         return;
     }
 
-    std::cout << "Number of channels " << channels << std::endl;
-
     if (output_path.empty()) {
         output_path = make_output_path(input_path);
     }
@@ -481,174 +479,119 @@ void majority_vote(const std::string &input_path, std::string output_path) {
 
 
 
-std::vector<unsigned char> get_window(std::vector<unsigned char> *image,
+bool comp(unsigned char a, unsigned char b) {
+    return a < b;
+}
+
+void increase_window_size(const std::vector<unsigned char> &input, std::vector<unsigned char> *temp_window,
+                          int new_window_size, const int width, const int height, const int xpos, const int ypos) {
+
+    const int half_win = (new_window_size - 1) / 2;
+
+    // Top and bottom rows
+    for (int dx = -half_win; dx <= half_win; ++dx) {
+        const int xx = xpos + dx;
+        const int yy_top = ypos - half_win;
+        if (yy_top >= 0 && xx >= 0 && xx < width) {
+            temp_window->push_back(input[yy_top * width + xx]);
+        }
+        const int yy_bottom = ypos + half_win;
+        if (yy_bottom < height && xx >= 0 && xx < width) {
+            temp_window->push_back(input[yy_bottom * width + xx]);
+        }
+    }
+
+    // Left and right columns (excluding corners)
+    for (int dy = -half_win + 1; dy <= half_win - 1; ++dy) {
+        const int yy = ypos + dy;
+        const int xx_left = xpos - half_win;
+        if (xx_left >= 0 && yy >= 0 && yy < height) {
+            temp_window->push_back(input[yy * width + xx_left]);
+        }
+        const int xx_right = xpos + half_win;
+        if (xx_right < width && yy >= 0 && yy < height) {
+            temp_window->push_back(input[yy * width + xx_right]);
+        }
+    }
+}
+
+std::vector<unsigned char> get_window(const std::vector<unsigned char> &input,
                                       int width, int height,
                                       int x, int y,
-                                      int window_size)
-{
+                                      int window_size) {
     std::vector<unsigned char> output_window;
     const int half_win = window_size / 2;
-    unsigned int array_pos = 0;
-    for (int dy = -half_win; dy <= half_win; dy++) {
-        for (int dx = -half_win; dx <= half_win; dx++) {
+    output_window.reserve(window_size * window_size);
 
-            int yy = y + dy;
-            int xx = x + dx;
+    for (int dy = -half_win; dy <= half_win; ++dy) {
+        for (int dx = -half_win; dx <= half_win; ++dx) {
+            const int yy = y + dy;
+            const int xx = x + dx;
             if (xx >= 0 && yy >= 0 && xx < width && yy < height) {
-                output_window.push_back((*image)[yy * width + xx]);
+                output_window.push_back(input[yy * width + xx]);
             }
-            array_pos += 1;
         }
     }
     return output_window;
 }
 
-void increase_window_size(const std::vector<unsigned char> &image, std::vector<unsigned char> *temp_window, int old_winsize,
-                          const int width, const int height, const int xpos, const int ypos) {
+void adaptive_median_filter_process(const std::vector<unsigned char> &input, std::vector<unsigned char> *output,
+                                    const int width, const int height, const int channels,
+                                    int min_win_size, int max_window_size) {
 
-    // go one row up, down, left and right and push everything onto temp_window
+    #pragma omp parallel for
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            std::vector<unsigned char> temp_window;
+            temp_window.reserve(max_window_size * max_window_size);
 
-    //std::cout << "WINDOW SIZE INCREASED with width image " << width << " and height " << height << std::endl;
-    // std::cout << "The initial positions are xpos = " << xpos << ", ypos = " << ypos << "." << std::endl;
+            int current_win_size = min_win_size;
+            temp_window = get_window(input, width, height, x, y, current_win_size);
+            std::sort(temp_window.begin(), temp_window.end(), comp);
 
-    int half_win = old_winsize/2;
-    // std::cout << half_win << " is half the window size \n";
+            const int pos = y * width + x;
+            const unsigned char pxl = input[pos];
 
+            unsigned char local_median = temp_window[temp_window.size() / 2];
+            unsigned char local_max = temp_window.back();
+            unsigned char local_min = temp_window.front();
+            bool flag = false;
 
-    // row over the window needs to be inserted, if it is still inside the image
-    for (int x = xpos - half_win -1; x <= xpos + half_win + 1; x++) {
-        //std::cout << x << "\n";
-        if (ypos - half_win - 1 >= 0 && x >= 0 && x <= width - 1) {         // 1 2 pos 4 5 wenn aktuelles x im Bild ist kommt es rein
-            //std::cout << "Condition: " << ypos-half_win - 1 << std::endl;
-            // std::cout << "Inserted in window! Case 1 \n";
-            // std::cout << "Position " << x << ", " << ypos << std::endl;
-            temp_window->push_back(image[(ypos - half_win - 1) * width + x]);
-        }
-
-        // the same goes for the row below the window
-        if (ypos + half_win + 1 <= height - 1 && x >= 0 && x <= width - 1) {
-            // std::cout << "Condition: " << ypos-half_win + 1 << std::endl;
-            // std::cout << "Inserted in window! Case 2 \n";
-            // std::cout << "Position " << x << ", " << ypos << std::endl;
-            temp_window->push_back(image[(ypos + half_win + 1) * width + x]);
-        }
-    }
-
-    for (int y = ypos - half_win; y <= ypos + half_win; y++) {
-        if (xpos - half_win - 1 >= 0 && y >= 0 && y <= height -1) {
-            // std::cout << "Inserted in window! Case 3 \n";
-            // std::cout << "Position " << xpos << ", " << y << std::endl;
-            temp_window->push_back(image[y * width + xpos - half_win -1]);
-        }
-        if (xpos + half_win + 1 <= width - 1 && y >= 0 && y <= height - 1) {
-            // std::cout << "Inserted in window! Case 4 \n";
-            // std::cout << "Position " << xpos << ", " << y << std::endl;
-            temp_window->push_back(image[y * width + xpos + half_win + 1]);
-        }
-    }
-
-    // std::cout << std::endl << std::endl;
-
-}
-
-bool comp(unsigned char a, unsigned char b) {
-    return a < b;
-}
-
-void print_vec(const std::vector<unsigned char>& vec) {
-    // for (unsigned char i: vec) {
-    //     std::cout << i << " ";
-    // }
-}
-
-void adaptive_median_filter(std::vector<unsigned char> *image, const int width, const int height, const int channels,
-                            int min_win_size, int max_window_size) {
-    // if (!image) {
-    //     std::cout << "Null pointer in adaptive_median_filter \n" ;
-    //     return;
-    // }
-
-    std::vector<unsigned char> temp_window;
-    unsigned char local_median, local_max, local_min = 0;
-    int current_win_size;
-    // std::cout << "Maße " << width << " " << height << std::endl;
-// #pragma omp parallel for
-    for (int y = 0; y < height; y++) { // iterate over all pixels
-        for (int x = 0; x < width; x++) {
-            std::cout << "Process position "<< x << " " << y << std::endl ;
-            bool flag = false; // "have we calculated the pixel or not"-flag
-
-            // RACE CONDITION, new window for each thread
-            temp_window.clear(); // clear the window
-            temp_window.push_back((*image)[y * width + x]); // only insert the pixel at the current position
-            current_win_size = 1; // keep track of the window size
-
-            while (current_win_size < min_win_size) { // increase the window size until we reach the minimum size requirements
-                print_vec(temp_window);
-                increase_window_size(*image, &temp_window, current_win_size, width, height, x, y);
-                current_win_size++;
-            }
-
-            // std::cout << "ESCAPED WHILE 1 " << std::endl;
-
-            int pos = y * width + x;
-            unsigned char pxl = (*image)[pos];
-
-            // find min, find max, find median
-            std::sort(temp_window.begin(), temp_window.end(), comp); // sort the temp window
-            local_median = temp_window[temp_window.size() / 2]; // the pixel in the center of the sorted list will be the median
-            local_max = temp_window[temp_window.size()-1]; // the last one is the maximum
-            local_min = temp_window[0]; // the first one is the minimum
-
-            while (flag == false && current_win_size < max_window_size) {       // while we haven't found the pixel or haven't reached the max size
-                std::cout << " AHHHHHH";
+            while (!flag && current_win_size < max_window_size) {
                 if (local_median > local_min && local_median < local_max) {
                     if (pxl > local_min && pxl < local_max) {
-                        flag = true; // simply keep the pixel's value
+                        (*output)[pos] = pxl;
                     } else {
-                        (*image)[pos] = local_median;  // set the value as the local median
+                        (*output)[pos] = local_median;
                     }
+                    flag = true;
                 } else {
-                    increase_window_size(*image, &temp_window, current_win_size, width, height, x, y); // increase the window size
-                    current_win_size++;
-
-                    // find min, find max, find median
+                    current_win_size += 2;
+                    increase_window_size(input, &temp_window, current_win_size, width, height, x, y);
                     std::sort(temp_window.begin(), temp_window.end(), comp);
                     local_median = temp_window[temp_window.size() / 2];
-                    local_max = temp_window[temp_window.size()-1];
-                    local_min = temp_window[0];
+                    local_max = temp_window.back();
+                    local_min = temp_window.front();
                 }
-
             }
 
-            // again just keep the pixel's value
-
+            if (!flag) {
+                (*output)[pos] = local_median;
+            }
         }
     }
 }
 
+void adaptive_median_filter(const std::string &input_path, std::string output_path) {
+    auto total_start = std::chrono::high_resolution_clock::now();
+    spdlog::info("Starting adaptive median filter");
 
-void median_filter(std::vector<unsigned char> *image, const int width, const int height, const int channels,
-                            int min_win_size, int max_window_size) {
-    // first lets try a simple median filter
-
-    std::vector<unsigned char> temp_window;
-
-    for (int y = 0; y < height ; y++) {
-        for (int x = 0; x < width - 1; x++) {
-            temp_window.clear();
-            temp_window = get_window(image, width, height, x, y, min_win_size);
-            std::sort(temp_window.begin(), temp_window.end(), comp);
-            (*image)[y * width + x] = temp_window[temp_window.size() / 2];
-        }
-    }
-}
-
-
-void adaptive_median_filter_test(const std::string &input_path, std::string output_path) {
-    spdlog::info("Starting adaptive median filter ");
+    auto load_start = std::chrono::high_resolution_clock::now();
     int width, height, channels;
     unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
+    auto load_end = std::chrono::high_resolution_clock::now();
+    spdlog::info("Image loading took {} ms",
+                 std::chrono::duration_cast<std::chrono::milliseconds>(load_end - load_start).count());
 
     if (!image) {
         spdlog::error("Failed to load image: {}", input_path);
@@ -659,27 +602,40 @@ void adaptive_median_filter_test(const std::string &input_path, std::string outp
         output_path = make_output_path(input_path);
     }
 
+    auto convert_start = std::chrono::high_resolution_clock::now();
     std::vector<unsigned char> gray(width * height);
-
-#pragma omp parallel for
-    for (int i = 0; i < width * height; i++) {
+    #pragma omp parallel for
+    for (int i = 0; i < width * height; ++i) {
         gray[i] = static_cast<unsigned char>(
-                0.2126f * image[i * channels + 0] +
-                0.7152f * image[i * channels + 1] +
-                0.0722f * image[i * channels + 2]);
+            0.2126f * image[i * channels + 0] +
+            0.7152f * image[i * channels + 1] +
+            0.0722f * image[i * channels + 2]);
     }
+    auto convert_end = std::chrono::high_resolution_clock::now();
+    spdlog::info("Grayscale conversion took {} ms",
+                 std::chrono::duration_cast<std::chrono::milliseconds>(convert_end - convert_start).count());
 
-    adaptive_median_filter(&gray, width, height, 1, 3, 10);
+    auto filter_start = std::chrono::high_resolution_clock::now();
+    std::vector<unsigned char> output(width * height);
+    adaptive_median_filter_process(gray, &output, width, height, 1, 3, 10);
+    auto filter_end = std::chrono::high_resolution_clock::now();
+    spdlog::info("Filtering took {} ms",
+                 std::chrono::duration_cast<std::chrono::milliseconds>(filter_end - filter_start).count());
 
-    // median_filter(&gray, width, height, 1, 3, 10);
-
-    if (!write_binary_image(output_path, width, height, 1, gray.data())) {
+    auto write_start = std::chrono::high_resolution_clock::now();
+    if (!write_binary_image(output_path, width, height, 1, output.data())) {
         spdlog::error("Failed to write filtered image: {}", output_path);
     } else {
         spdlog::info("Filtered image saved to: {}", output_path);
     }
+    auto write_end = std::chrono::high_resolution_clock::now();
+    spdlog::info("Writing image took {} ms",
+                 std::chrono::duration_cast<std::chrono::milliseconds>(write_end - write_start).count());
 
     stbi_image_free(image);
 
+    auto total_end = std::chrono::high_resolution_clock::now();
+    spdlog::info("Total runtime: {} ms",
+                 std::chrono::duration_cast<std::chrono::milliseconds>(total_end - total_start).count());
 }
 
