@@ -1,6 +1,9 @@
 #include <iostream>
 #include <string>
-#include "image_utils.h"
+#include "binarization/thresholding.h"
+#include "binarization/adaptive_thresholding.h"
+#include "binarization/integral_binarization.h"
+#include "filters/adaptive_median_filter.h"
 #include "../external/spdlog/include/spdlog/spdlog.h"
 #include "../external/spdlog/include/spdlog/sinks/basic_file_sink.h"
 
