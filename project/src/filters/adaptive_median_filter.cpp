@@ -26,7 +26,6 @@ void majority_vote(const std::string &input_path, std::string output_path) {
     auto start = std::chrono::high_resolution_clock::now();
 
     std::vector<unsigned char> img_binarize_image_parallel(width * height * channels);
-    std::vector<unsigned char> (width * height * channels);
 
     // add all intensity values to a new image with uncapped intensities
     // divide intensity values by n (this should scale the image back to the prior scale)
