@@ -1,0 +1,6 @@
+/mnt/27fd90fe-ceaf-41be-b6a3-17a191396fad/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/project/cmake-build-release/CMakeFiles/project.dir
+/mnt/27fd90fe-ceaf-41be-b6a3-17a191396fad/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/project/cmake-build-release/CMakeFiles/edit_cache.dir
+/mnt/27fd90fe-ceaf-41be-b6a3-17a191396fad/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/project/cmake-build-release/CMakeFiles/rebuild_cache.dir
+/mnt/27fd90fe-ceaf-41be-b6a3-17a191396fad/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/project/cmake-build-release/external/spdlog/CMakeFiles/spdlog.dir
+/mnt/27fd90fe-ceaf-41be-b6a3-17a191396fad/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/project/cmake-build-release/external/spdlog/CMakeFiles/edit_cache.dir
+/mnt/27fd90fe-ceaf-41be-b6a3-17a191396fad/Documents/Uni/5. Semester/Algorithm Engeniering/Algorithm-Engineering-Course/project/cmake-build-release/external/spdlog/CMakeFiles/rebuild_cache.dir

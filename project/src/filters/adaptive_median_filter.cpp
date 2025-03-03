@@ -2,6 +2,7 @@
 #include <utils/image_io.h>
 #include <filesystem>
 #include <chrono>
+#include <algorithm>
 #include <omp.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
