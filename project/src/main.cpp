@@ -7,15 +7,26 @@
 #include "../external/spdlog/include/spdlog/spdlog.h"
 #include "../external/spdlog/include/spdlog/sinks/basic_file_sink.h"
 
-void displayMenu() {
-    std::cout << "\nChoose an operation:\n";
-    std::cout << "1. Sequential Binarization\n";
-    std::cout << "2. Parallel Binarization\n";
-    std::cout << "3. Advanced Binarization (Sauvola & Nick)\n";
-    std::cout << "4. Integral Image Binarization\n";
-    std::cout << "5. Apply adaptive median filter\n";
-    std::cout << "6. All Methods\n";
-    std::cout << "Enter your choice (1-5): ";
+void printHelp() {
+    std::cout << "\nImage Processing Tool\n\n";
+    std::cout << "Usage:\n";
+    std::cout << "  ./program --input <input> --method <method> [options]\n\n";
+
+    std::cout << "Required arguments:\n";
+    std::cout << "  -i, --input <path>    Input image file path\n";
+    std::cout << "  -m, --method <name>   Processing method to use:\n";
+    std::cout << "                        (sequential, parallel, sauvola, integral, adaptive_median, all)\n\n";
+
+    std::cout << "Options:\n";
+    std::cout << "  -o, --output <path>   Output file path (required for some methods)\n";
+    std::cout << "  -t, --threshold <num> Threshold value (default: 128)\n";
+    std::cout << "  -h, --help            Show this help message\n\n";
+
+    std::cout << "Examples:\n";
+    std::cout << "  Basic thresholding:     ./program -i input.jpg -o out.jpg -m sequential -t 150\n";
+    std::cout << "  Sauvola binarization:   ./program --input in.png --method sauvola\n";
+    std::cout << "  Run all methods:        ./program -i image.ppm -o results/ -m all\n";
+    std::cout << "  Show help:              ./program --help\n";
 }
 
 int main(int argc, char *argv[]) {
@@ -27,57 +38,117 @@ int main(int argc, char *argv[]) {
         spdlog::set_level(spdlog::level::info);
         spdlog::info("***** Program started *****\n\n");
 
-        if (argc < 3) {
-            spdlog::error("Usage: {} <input.(png|jpg|ppm...)> <threshold> [<output.(png|jpg|ppm...)>]", argv[0]);
-            return 1;
-        }
-
-        std::string input_path = argv[1];
-        int threshold = std::stoi(argv[2]);
+        std::string input_path;
         std::string output_path;
-        if (argc > 3) {
-            output_path = argv[3];
-        }
+        std::string method;
+        int threshold = 128;
 
-        int choice = 0;
-        while (choice < 1 || choice > 7) {
-            displayMenu();
-            std::cin >> choice;
-            if (std::cin.fail() || choice < 1 || choice > 6) {
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                std::cout << "Invalid input. Please enter a number between 1 and 5." << std::endl;
-                choice = 0;
+        // Parse command line arguments
+        for (int i = 1; i < argc; ++i) {
+
+            if (std::string(argv[i]) == "--help" || std::string(argv[i]) == "-h") {
+                printHelp();
+                return 0;
+            }
+            std::string arg = argv[i];
+            if (arg == "--input" || arg == "-i") {
+                if (i + 1 < argc) {
+                    input_path = argv[++i];
+                } else {
+                    spdlog::error("Missing value for --input");
+                    return 1;
+                }
+            } else if (arg == "--output" || arg == "-o") {
+                if (i + 1 < argc) {
+                    output_path = argv[++i];
+                } else {
+                    spdlog::error("Missing value for --output");
+                    return 1;
+                }
+            } else if (arg == "--method" || arg == "-m") {
+                if (i + 1 < argc) {
+                    method = argv[++i];
+                } else {
+                    spdlog::error("Missing value for --method");
+                    return 1;
+                }
+            } else if (arg == "--threshold" || arg == "-t") {
+                if (i + 1 < argc) {
+                    try {
+                        threshold = std::stoi(argv[++i]);
+                    } catch (const std::exception& e) {
+                        spdlog::error("Invalid threshold value: {}", e.what());
+                        return 1;
+                    }
+                } else {
+                    spdlog::error("Missing value for --threshold");
+                    return 1;
+                }
+            } else {
+                spdlog::error("Unknown argument: {}", arg);
+                return 1;
             }
         }
 
-        switch (choice) {
-            case 1:
-                binarize_image(input_path, output_path, threshold);
-                break;
-            case 2:
-                binarize_image_parallel(input_path, output_path, threshold);
-                break;
-            case 3:
-                process_advanced_binarization(input_path);
-                break;
-            case 4:
-                process_integral_binarization(input_path);
-                break;
-            case 5:
+        // Validate required arguments
+        if (input_path.empty()) {
+            spdlog::error("Input path is required (use --input)");
+            printHelp();
+            return 1;
+        }
+        if (method.empty()) {
+            spdlog::error("Method is required (use --method)");
+            printHelp();
+            return 1;
+        }
 
-                adaptive_median_filter(input_path, output_path);
+        // Check valid method
+        const std::string valid_methods[] = {"sequential", "parallel", "sauvola", "integral", "adaptive_median", "all"};
+        bool valid = false;
+        for (const auto& m : valid_methods) {
+            if (method == m) {
+                valid = true;
                 break;
-            case 6:
-                binarize_image_parallel(input_path, output_path, threshold);
-                process_integral_binarization(input_path);
-                adaptive_median_filter(input_path, output_path);
-                break;
+            }
+        }
+        if (!valid) {
+            spdlog::error("Invalid method: {}", method);
+            return 1;
+        }
+
+        // Check output requirements
+        /*if ((method == "sequential" || method == "parallel" || method == "adaptive_median" || method == "all")
+            && output_path.empty()) {
+            spdlog::error("Output path required for method '{}'", method);
+            return 1;
+        }*/
+
+        // Execute selected method
+        if (method == "sequential") {
+            binarize_image(input_path, output_path, threshold);
+        }
+        else if (method == "parallel") {
+            binarize_image_parallel(input_path, output_path, threshold);
+        }
+        else if (method == "sauvola") {
+            process_advanced_binarization(input_path);
+        }
+        else if (method == "integral") {
+            process_integral_binarization(input_path);
+        }
+        else if (method == "adaptive_median") {
+            adaptive_median_filter(input_path, output_path);
+        }
+        else if (method == "all") {
+            binarize_image_parallel(input_path, output_path, threshold);
+            process_integral_binarization(input_path);
+            adaptive_median_filter(input_path, output_path);
         }
 
         spdlog::info("***** Program finished successfully *****\n\n");
     } catch (const std::exception &e) {
         spdlog::critical("Unhandled exception: {}", e.what());
+        printHelp();
         return 1;
     }
 
