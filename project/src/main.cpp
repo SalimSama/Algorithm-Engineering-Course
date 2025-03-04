@@ -13,8 +13,8 @@ void displayMenu() {
     std::cout << "2. Parallel Binarization\n";
     std::cout << "3. Advanced Binarization (Sauvola & Nick)\n";
     std::cout << "4. Integral Image Binarization\n";
-    std::cout << "5. All Methods\n";
-    std::cout << "6. Apply adaptive median filter\n";
+    std::cout << "5. Apply adaptive median filter\n";
+    std::cout << "6. All Methods\n";
     std::cout << "Enter your choice (1-5): ";
 }
 
@@ -40,10 +40,10 @@ int main(int argc, char *argv[]) {
         }
 
         int choice = 0;
-        while (choice < 1 || choice > 6) {
+        while (choice < 1 || choice > 7) {
             displayMenu();
             std::cin >> choice;
-            if (std::cin.fail() || choice < 1 || choice > 5) {
+            if (std::cin.fail() || choice < 1 || choice > 6) {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 std::cout << "Invalid input. Please enter a number between 1 and 5." << std::endl;
@@ -65,13 +65,12 @@ int main(int argc, char *argv[]) {
                 process_integral_binarization(input_path);
                 break;
             case 5:
-                binarize_image(input_path, output_path, threshold);
-                binarize_image_parallel(input_path, output_path, threshold);
-                process_advanced_binarization(input_path);
-                process_integral_binarization(input_path);
+
                 adaptive_median_filter(input_path, output_path);
                 break;
             case 6:
+                binarize_image_parallel(input_path, output_path, threshold);
+                process_integral_binarization(input_path);
                 adaptive_median_filter(input_path, output_path);
                 break;
         }

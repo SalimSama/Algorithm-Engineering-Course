@@ -139,18 +139,14 @@ void adaptive_median_filter_process(const std::vector<unsigned char> &input, std
 }
 
 void adaptive_median_filter(const std::string &input_path, std::string output_path) {
-    auto total_start = std::chrono::high_resolution_clock::now();
-    spdlog::info("Starting adaptive median filter");
+    auto start = std::chrono::high_resolution_clock::now();
+    spdlog::info("adaptive_median_filter Starting processing on: {}", input_path);
 
-    auto load_start = std::chrono::high_resolution_clock::now();
     int width, height, channels;
     unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
-    auto load_end = std::chrono::high_resolution_clock::now();
-    spdlog::info("Image loading took {} ms",
-                 std::chrono::duration_cast<std::chrono::milliseconds>(load_end - load_start).count());
 
     if (!image) {
-        spdlog::error("Failed to load image: {}", input_path);
+        spdlog::error("[adaptive_median_filter] Failed to load image: {}", input_path);
         return;
     }
 
@@ -158,39 +154,27 @@ void adaptive_median_filter(const std::string &input_path, std::string output_pa
         output_path = make_output_path(input_path);
     }
 
-    auto convert_start = std::chrono::high_resolution_clock::now();
     std::vector<unsigned char> gray(width * height);
-    #pragma omp parallel for
+#pragma omp parallel for
     for (int i = 0; i < width * height; ++i) {
         gray[i] = static_cast<unsigned char>(
             0.2126f * image[i * channels + 0] +
             0.7152f * image[i * channels + 1] +
             0.0722f * image[i * channels + 2]);
     }
-    auto convert_end = std::chrono::high_resolution_clock::now();
-    spdlog::info("Grayscale conversion took {} ms",
-                 std::chrono::duration_cast<std::chrono::milliseconds>(convert_end - convert_start).count());
 
-    auto filter_start = std::chrono::high_resolution_clock::now();
     std::vector<unsigned char> output(width * height);
     adaptive_median_filter_process(gray, &output, width, height, 1, 3, 10);
-    auto filter_end = std::chrono::high_resolution_clock::now();
-    spdlog::info("Filtering took {} ms",
-                 std::chrono::duration_cast<std::chrono::milliseconds>(filter_end - filter_start).count());
 
-    auto write_start = std::chrono::high_resolution_clock::now();
     if (!write_binary_image(output_path, width, height, 1, output.data())) {
-        spdlog::error("Failed to write filtered image: {}", output_path);
+        spdlog::error("[adaptive_median_filter] Failed to write filtered image: {}", output_path);
     } else {
-        spdlog::info("Filtered image saved to: {}", output_path);
+        spdlog::info("[adaptive_median_filter] Filtered image saved to: {}", output_path);
     }
-    auto write_end = std::chrono::high_resolution_clock::now();
-    spdlog::info("Writing image took {} ms",
-                 std::chrono::duration_cast<std::chrono::milliseconds>(write_end - write_start).count());
 
     stbi_image_free(image);
 
-    auto total_end = std::chrono::high_resolution_clock::now();
-    spdlog::info("Total runtime: {} ms",
-                 std::chrono::duration_cast<std::chrono::milliseconds>(total_end - total_start).count());
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    spdlog::info("adaptive_median_filter Total runtime: {} seconds", duration.count());
 }

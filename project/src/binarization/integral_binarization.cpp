@@ -87,7 +87,7 @@ void adaptive_binarize_integral(const unsigned char* gray,
                        const std::function<float(float mean, float stddev)> &threshold_func) {
     int half_win = window_size / 2;
 
-    spdlog::info("Starting adaptive integral binarization with window size {}");
+    spdlog::info("Starting adaptive integral binarization with window size {}", window_size);
 
     auto start = std::chrono::high_resolution_clock::now();
 
