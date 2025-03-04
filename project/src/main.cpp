@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
                     input_path = argv[++i];
                 } else {
                     spdlog::error("Missing value for --input");
+                    std::cout << "Missing input!" << std::endl;
                     return 1;
                 }
             } else if (arg == "--output" || arg == "-o") {
@@ -63,6 +64,7 @@ int main(int argc, char *argv[]) {
                     output_path = argv[++i];
                 } else {
                     spdlog::error("Missing value for --output");
+                    std::cout << "Missing outoput!" << std::endl;
                     return 1;
                 }
             } else if (arg == "--method" || arg == "-m") {
@@ -70,6 +72,7 @@ int main(int argc, char *argv[]) {
                     method = argv[++i];
                 } else {
                     spdlog::error("Missing value for --method");
+                    std::cout << "Missing methode!" << std::endl;
                     return 1;
                 }
             } else if (arg == "--threshold" || arg == "-t") {
@@ -82,10 +85,12 @@ int main(int argc, char *argv[]) {
                     }
                 } else {
                     spdlog::error("Missing value for --threshold");
+                    std::cout << "Missing threshold!" << std::endl;
                     return 1;
                 }
             } else {
                 spdlog::error("Unknown argument: {}", arg);
+                std::cout << "Unknown arguments!" << std::endl;
                 return 1;
             }
         }
@@ -115,13 +120,6 @@ int main(int argc, char *argv[]) {
             spdlog::error("Invalid method: {}", method);
             return 1;
         }
-
-        // Check output requirements
-        /*if ((method == "sequential" || method == "parallel" || method == "adaptive_median" || method == "all")
-            && output_path.empty()) {
-            spdlog::error("Output path required for method '{}'", method);
-            return 1;
-        }*/
 
         // Execute selected method
         if (method == "sequential") {

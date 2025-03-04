@@ -12,7 +12,7 @@ add_subdirectory(external/spdlog)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Hauptprogramm erstellen und mit Bibliothek verlinken
-add_executable(project
+add_executable(image_processor
         src/main.cpp
         src/binarization/thresholding.cpp
         src/binarization/adaptive_thresholding.cpp
@@ -22,4 +22,4 @@ add_executable(project
         src/utils/stb_image_implementation.cpp
 )
 
-target_link_libraries(project OpenMP::OpenMP_CXX spdlog)
+target_link_libraries(image_processor OpenMP::OpenMP_CXX spdlog)
