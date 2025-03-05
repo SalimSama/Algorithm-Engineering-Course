@@ -39,81 +39,103 @@ bool comp(unsigned char a, unsigned char b) {
     return a < b;
 }
 
-void increase_window_size(const std::vector<unsigned char> &input, std::vector<unsigned char> *temp_window,
-                          int new_window_size, const int width, const int height, const int xpos, const int ypos) {
+void increase_window_size(const std::vector<unsigned char> &input, std::vector<unsigned char> &temp_window,
+                          int old_window_size, int new_window_size,
+                          const int width, const int height, const int xpos, const int ypos) {
 
-    const int half_win = (new_window_size - 1) / 2;
+    const int old_half_win = (old_window_size - 1) / 2;
+    const int new_half_win = (new_window_size - 1) / 2;
 
     // Top and bottom rows
-    for (int dx = -half_win; dx <= half_win; ++dx) {
+    for (int dx = -new_half_win; dx <= new_half_win; ++dx) {
         const int xx = xpos + dx;
-        const int yy_top = ypos - half_win;
+
+        // Top new row
+        const int yy_top = ypos - new_half_win;
         if (yy_top >= 0 && xx >= 0 && xx < width) {
-            temp_window->push_back(input[yy_top * width + xx]);
+            temp_window.push_back(input[yy_top * width + xx]);
         }
-        const int yy_bottom = ypos + half_win;
+
+        // Bottom new row
+        const int yy_bottom = ypos + new_half_win;
         if (yy_bottom < height && xx >= 0 && xx < width) {
-            temp_window->push_back(input[yy_bottom * width + xx]);
+            temp_window.push_back(input[yy_bottom * width + xx]);
         }
     }
 
     // Left and right columns (excluding corners)
-    for (int dy = -half_win + 1; dy <= half_win - 1; ++dy) {
+    for (int dy = -new_half_win + 1; dy < new_half_win; ++dy) {
         const int yy = ypos + dy;
-        const int xx_left = xpos - half_win;
-        if (xx_left >= 0 && yy >= 0 && yy < height) {
-            temp_window->push_back(input[yy * width + xx_left]);
-        }
-        const int xx_right = xpos + half_win;
-        if (xx_right < width && yy >= 0 && yy < height) {
-            temp_window->push_back(input[yy * width + xx_right]);
-        }
-    }
-}
+        if (dy >= -old_half_win && dy <= old_half_win) {
+            // Left new column
+            const int xx_left = xpos - new_half_win;
+            if (xx_left >= 0 && yy >= 0 && yy < height) {
+                temp_window.push_back(input[yy * width + xx_left]);
+            }
 
-std::vector<unsigned char> get_window(const std::vector<unsigned char> &input,
-                                      int width, int height,
-                                      int x, int y,
-                                      int window_size) {
-    std::vector<unsigned char> output_window;
-    const int half_win = window_size / 2;
-    output_window.reserve(window_size * window_size);
-
-    for (int dy = -half_win; dy <= half_win; ++dy) {
-        for (int dx = -half_win; dx <= half_win; ++dx) {
-            const int yy = y + dy;
-            const int xx = x + dx;
-            if (xx >= 0 && yy >= 0 && xx < width && yy < height) {
-                output_window.push_back(input[yy * width + xx]);
+            // Right new column
+            const int xx_right = xpos + new_half_win;
+            if (xx_right < width && yy >= 0 && yy < height) {
+                temp_window.push_back(input[yy * width + xx_right]);
             }
         }
     }
-    return output_window;
+}
+
+void get_window(const std::vector<unsigned char> &input,
+                int width, int height,
+                int x, int y,
+                int window_size,
+                std::vector<unsigned char> &output_window) {
+
+    output_window.clear(); // Wiederverwendung des Puffers
+    const int half_win = window_size / 2;
+
+    for (int dy = -half_win; dy <= half_win; ++dy) {
+        const int yy = y + dy;
+        if (yy < 0 || yy >= height) continue;
+
+        const int row_offset = yy * width;
+        for (int dx = -half_win; dx <= half_win; ++dx) {
+            const int xx = x + dx;
+            if (xx >= 0 && xx < width) {
+                output_window.push_back(input[row_offset + xx]);
+            }
+        }
+    }
 }
 
 void adaptive_median_filter_process(const std::vector<unsigned char> &input, std::vector<unsigned char> *output,
-                                    const int width, const int height, const int channels,
-                                    int min_win_size, int max_window_size) {
+                                   const int width, const int height, const int channels,
+                                   int min_win_size, int max_window_size) {
 
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < height; ++y) {
+        // Vor-Allokation des temp_window pro Thread
+        std::vector<unsigned char> temp_window;
+        temp_window.reserve(max_window_size * max_window_size);
+
         for (int x = 0; x < width; ++x) {
-            std::vector<unsigned char> temp_window;
-            temp_window.reserve(max_window_size * max_window_size);
-
-            int current_win_size = min_win_size;
-            temp_window = get_window(input, width, height, x, y, current_win_size);
-            std::sort(temp_window.begin(), temp_window.end(), comp);
-
             const int pos = y * width + x;
             const unsigned char pxl = input[pos];
 
-            unsigned char local_median = temp_window[temp_window.size() / 2];
-            unsigned char local_max = temp_window.back();
-            unsigned char local_min = temp_window.front();
+            int current_win_size = min_win_size;
+            temp_window.clear();
+
+            // Initialen Window auffüllen
+            get_window(input, width, height, x, y, current_win_size, temp_window);
+
             bool flag = false;
 
             while (!flag && current_win_size < max_window_size) {
+                // Partielle Sortierung mit nth_element - effizienter als vollständige Sortierung
+                const size_t mid_idx = temp_window.size() / 2;
+                std::nth_element(temp_window.begin(), temp_window.begin() + mid_idx, temp_window.end());
+
+                const unsigned char local_median = temp_window[mid_idx];
+                const unsigned char local_min = *std::min_element(temp_window.begin(), temp_window.end());
+                const unsigned char local_max = *std::max_element(temp_window.begin(), temp_window.end());
+
                 if (local_median > local_min && local_median < local_max) {
                     if (pxl > local_min && pxl < local_max) {
                         (*output)[pos] = pxl;
@@ -122,17 +144,18 @@ void adaptive_median_filter_process(const std::vector<unsigned char> &input, std
                     }
                     flag = true;
                 } else {
+                    const int old_win_size = current_win_size;
                     current_win_size += 2;
-                    increase_window_size(input, &temp_window, current_win_size, width, height, x, y);
-                    std::sort(temp_window.begin(), temp_window.end(), comp);
-                    local_median = temp_window[temp_window.size() / 2];
-                    local_max = temp_window.back();
-                    local_min = temp_window.front();
+
+                    // Nur neue Elemente des größeren Fensters hinzufügen
+                    increase_window_size(input, temp_window, old_win_size, current_win_size, width, height, x, y);
                 }
             }
 
             if (!flag) {
-                (*output)[pos] = local_median;
+                const size_t mid_idx = temp_window.size() / 2;
+                std::nth_element(temp_window.begin(), temp_window.begin() + mid_idx, temp_window.end());
+                (*output)[pos] = temp_window[mid_idx];
             }
         }
     }
@@ -154,8 +177,10 @@ void adaptive_median_filter(const std::string &input_path, std::string output_pa
         output_path = make_output_path(input_path);
     }
 
+    // Optimierte Graustufenumwandlung mit SIMD-Unterstützung
     std::vector<unsigned char> gray(width * height);
-#pragma omp parallel for
+
+#pragma omp parallel for simd
     for (int i = 0; i < width * height; ++i) {
         gray[i] = static_cast<unsigned char>(
             0.2126f * image[i * channels + 0] +
