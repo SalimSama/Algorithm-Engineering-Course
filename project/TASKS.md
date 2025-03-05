@@ -1,21 +1,7 @@
 # Project Tasks
 
 
-
-
-
-dem Benutzer erlauben, Parameter wie die Kernelgröße, den Schwellenwert und den Dynamikbereich zur Laufzeit einzustellen.
-
-
 Interface + Documentation
-Flags 
-
-
-
-
-fix NICK ???
-
-
 
 Algorithmus Vektorisieren
 
@@ -28,5 +14,3 @@ Comments
 Usage Documentation  
 
 Test 
-
-PAPER!!!
