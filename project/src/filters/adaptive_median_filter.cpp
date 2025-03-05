@@ -33,10 +33,103 @@ void majority_vote(const std::string &input_path, std::string output_path) {
     // binarize image again (using half the maximum intensity as the threshold)
 }
 
+struct WindowParams {
+    int min_size;
+    int max_size;
+};
 
+WindowParams estimate_optimal_window_sizes(const std::vector<unsigned char>& gray, int width, int height) {
+    // 1. Estimate noise level using homogeneous region variance
+    std::vector<float> block_variances;
+    const int block_size = 8;
 
-bool comp(unsigned char a, unsigned char b) {
-    return a < b;
+    for (int y = 0; y < height - block_size; y += block_size) {
+        for (int x = 0; x < width - block_size; x += block_size) {
+            float mean = 0.0f, var = 0.0f;
+
+            // Calculate mean
+            for (int by = 0; by < block_size; by++) {
+                for (int bx = 0; bx < block_size; bx++) {
+                    mean += gray[(y + by) * width + (x + bx)];
+                }
+            }
+            mean /= (block_size * block_size);
+
+            // Calculate variance
+            for (int by = 0; by < block_size; by++) {
+                for (int bx = 0; bx < block_size; bx++) {
+                    float diff = gray[(y + by) * width + (x + bx)] - mean;
+                    var += diff * diff;
+                }
+            }
+            var /= (block_size * block_size);
+
+            // Only consider homogeneous regions (low gradient blocks)
+            if (var < 200.0f) { // Threshold for homogeneous regions
+                block_variances.push_back(var);
+            }
+        }
+    }
+
+    // Sort variances and take median as noise estimate
+    if (block_variances.empty()) {
+        return {3, 9}; // Default if estimation fails
+    }
+
+    std::nth_element(block_variances.begin(),
+                    block_variances.begin() + block_variances.size()/2,
+                    block_variances.end());
+    float noise_level = block_variances[block_variances.size()/2];
+
+    // 2. Calculate edge density (approximation of image complexity)
+    std::vector<unsigned char> edges(width * height, 0);
+    float edge_density = 0.0f;
+
+    // Simple Sobel edge detection
+    #pragma omp parallel for reduction(+:edge_density)
+    for (int y = 1; y < height - 1; y++) {
+        for (int x = 1; x < width - 1; x++) {
+            float gx = -gray[(y-1)*width + (x-1)] - 2*gray[y*width + (x-1)] - gray[(y+1)*width + (x-1)] +
+                       gray[(y-1)*width + (x+1)] + 2*gray[y*width + (x+1)] + gray[(y+1)*width + (x+1)];
+            float gy = -gray[(y-1)*width + (x-1)] - 2*gray[(y-1)*width + x] - gray[(y-1)*width + (x+1)] +
+                       gray[(y+1)*width + (x-1)] + 2*gray[(y+1)*width + x] + gray[(y+1)*width + (x+1)];
+
+            float magnitude = std::sqrt(gx*gx + gy*gy);
+            if (magnitude > 30.0f) { // Edge threshold
+                edge_density += 1.0f;
+            }
+        }
+    }
+    edge_density /= (width * height);
+
+    // 3. Determine window sizes based on noise level and edge density
+    int min_size = 3; // Base min size
+    int max_size = 7; // Base max size
+
+    // Adjust based on noise level
+    if (noise_level < 10.0f) {
+        max_size = 7;
+    } else if (noise_level < 30.0f) {
+        max_size = 11;
+    } else {
+        max_size = 15;
+    }
+
+    // Fine-tune based on edge density
+    if (edge_density > 0.1f) { // Image has many details
+        max_size = std::max(7, max_size - 4);
+    }
+
+    // Make sure min_size is odd
+    if (min_size % 2 == 0) min_size++;
+
+    // Make sure max_size is odd
+    if (max_size % 2 == 0) max_size++;
+
+    spdlog::info("Estimated noise level: {:.2f}, Edge density: {:.4f}", noise_level, edge_density);
+    spdlog::info("Selected window sizes - min: {}, max: {}", min_size, max_size);
+
+    return {min_size, max_size};
 }
 
 void increase_window_size(const std::vector<unsigned char> &input, std::vector<unsigned char> &temp_window,
@@ -177,9 +270,8 @@ void adaptive_median_filter(const std::string &input_path, std::string output_pa
         output_path = make_output_path(input_path);
     }
 
-    // Optimierte Graustufenumwandlung mit SIMD-Unterstützung
+    // Grayscale conversion
     std::vector<unsigned char> gray(width * height);
-
 #pragma omp parallel for simd
     for (int i = 0; i < width * height; ++i) {
         gray[i] = static_cast<unsigned char>(
@@ -188,8 +280,11 @@ void adaptive_median_filter(const std::string &input_path, std::string output_pa
             0.0722f * image[i * channels + 2]);
     }
 
+    // Estimate optimal window sizes
+    WindowParams params = estimate_optimal_window_sizes(gray, width, height);
+
     std::vector<unsigned char> output(width * height);
-    adaptive_median_filter_process(gray, &output, width, height, 1, 3, 10);
+    adaptive_median_filter_process(gray, &output, width, height, 1, params.min_size, params.max_size);
 
     if (!write_binary_image(output_path, width, height, 1, output.data())) {
         spdlog::error("[adaptive_median_filter] Failed to write filtered image: {}", output_path);
