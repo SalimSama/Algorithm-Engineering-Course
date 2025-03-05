@@ -20,6 +20,7 @@ A C++ program for image binarization and filtering with multiple algorithms and 
 
 - C++17 compiler
 - stb_image
+- OpenMP
 - CMake 3.12+
 - spdlog (included in `external/`)
 
