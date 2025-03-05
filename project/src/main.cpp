@@ -10,7 +10,7 @@
 void printHelp() {
     std::cout << "\nImage Processing Tool\n\n";
     std::cout << "Usage:\n";
-    std::cout << "  ./program --input <input> --method <method> [options]\n\n";
+    std::cout << "  ./image_processor --input <input> --method <method> [options]\n\n";
 
     std::cout << "Required arguments:\n";
     std::cout << "  -i, --input <path>    Input image file path\n";
@@ -27,10 +27,10 @@ void printHelp() {
 
 
     std::cout << "Examples:\n";
-    std::cout << "  Basic thresholding:     ./program -i input.jpg -o out.jpg -m sequential -t 150\n";
-    std::cout << "  Sauvola and Nick binarization:   ./program --input in.png --method advanced\n";
-    std::cout << "  Run all methods:        ./program -i image.ppm -o results/ -m all\n";
-    std::cout << "  Show help:              ./program --help\n";
+    std::cout << "  Basic thresholding:     ./image_processor -i input.jpg -o out.jpg -m sequential -t 150\n";
+    std::cout << "  Sauvola and Nick binarization:   ./image_processor --input in.png --method advanced\n";
+    std::cout << "  Run all methods:        ./image_processor -i image.ppm -o results/ -m all\n";
+    std::cout << "  Show help:              ./image_processor --help\n";
 }
 
 int main(int argc, char *argv[]) {
@@ -50,85 +50,94 @@ int main(int argc, char *argv[]) {
         float k = 0.2f;        // Standardwert für Sauvola/Nick
         float R = 128.0f;      // Standardwert für Sauvola
 
-        // Parse command line arguments
-        for (int i = 1; i < argc; ++i) {
 
-            if (std::string(argv[i]) == "--help" || std::string(argv[i]) == "-h") {
-                printHelp();
-                return 0;
-            }
-            std::string arg = argv[i];
-            if (arg == "--input" || arg == "-i") {
-                if (i + 1 < argc) {
-                    input_path = argv[++i];
-                } else {
-                    spdlog::error("Missing value for --input");
-                    std::cout << "Missing input!" << std::endl;
-                    return 1;
-                }
-            } else if (arg == "--output" || arg == "-o") {
-                if (i + 1 < argc) {
-                    output_path = argv[++i];
-                } else {
-                    spdlog::error("Missing value for --output");
-                    std::cout << "Missing outoput!" << std::endl;
-                    return 1;
-                }
-            } else if (arg == "--method" || arg == "-m") {
-                if (i + 1 < argc) {
-                    method = argv[++i];
-                } else {
-                    spdlog::error("Missing value for --method");
-                    std::cout << "Missing methode!" << std::endl;
-                    return 1;
-                }
-            } else if (arg == "--threshold" || arg == "-t") {
-                if (i + 1 < argc) {
-                    try {
-                        threshold = std::stoi(argv[++i]);
-                    } catch (const std::exception& e) {
-                        spdlog::error("Invalid threshold value: {}", e.what());
-                        return 1;
-                    }
-                } else {
-                    spdlog::error("Missing value for --threshold");
-                    std::cout << "Missing threshold!" << std::endl;
-                    return 1;
-                }
-                if (arg == "--window_size" || arg == "-w") {
-                    if (i + 1 < argc) {
-                        try {
-                            window_size = std::stoi(argv[++i]);
-                        } catch (const std::exception& e) {
-                            spdlog::error("Invalid window_size value: {}", e.what());
-                            return 1;
-                        }
-                    }
-                } else if (arg == "--k") {
-                    if (i + 1 < argc) {
-                        try {
-                            k = std::stof(argv[++i]);
-                        } catch (const std::exception& e) {
-                            spdlog::error("Invalid k value: {}", e.what());
-                            return 1;
-                        }
-                    }
-                } else if (arg == "--R") {
-                    if (i + 1 < argc) {
-                        try {
-                            R = std::stof(argv[++i]);
-                        } catch (const std::exception& e) {
-                            spdlog::error("Invalid R value: {}", e.what());
-                            return 1;
-                        }
-                    }
-                }
-            } else {
-                spdlog::error("Unknown argument: {}", arg);
-                std::cout << "Unknown arguments!" << std::endl;
+        // Parse command line arguments
+    for (int i = 1; i < argc; ++i) {
+
+    if (std::string(argv[i]) == "--help" || std::string(argv[i]) == "-h") {
+        printHelp();
+        return 0;
+    }
+    std::string arg = argv[i];
+    if (arg == "--input" || arg == "-i") {
+        if (i + 1 < argc) {
+            input_path = argv[++i];
+        } else {
+            spdlog::error("Missing value for --input");
+            std::cout << "Missing input!" << std::endl;
+            return 1;
+        }
+    } else if (arg == "--output" || arg == "-o") {
+        if (i + 1 < argc) {
+            output_path = argv[++i];
+        } else {
+            spdlog::error("Missing value for --output");
+            std::cout << "Missing output!" << std::endl;
+            return 1;
+        }
+    } else if (arg == "--method" || arg == "-m") {
+        if (i + 1 < argc) {
+            method = argv[++i];
+        } else {
+            spdlog::error("Missing value for --method");
+            std::cout << "Missing method!" << std::endl;
+            return 1;
+        }
+    } else if (arg == "--threshold" || arg == "-t") {
+        if (i + 1 < argc) {
+            try {
+                threshold = std::stoi(argv[++i]);
+            } catch (const std::exception& e) {
+                spdlog::error("Invalid threshold value: {}", e.what());
                 return 1;
             }
+        } else {
+            spdlog::error("Missing value for --threshold");
+            std::cout << "Missing threshold!" << std::endl;
+            return 1;
         }
+    } else if (arg == "--window_size" || arg == "-w") {
+        if (i + 1 < argc) {
+            try {
+                window_size = std::stoi(argv[++i]);
+            } catch (const std::exception& e) {
+                spdlog::error("Invalid window_size value: {}", e.what());
+                return 1;
+            }
+        } else {
+            spdlog::error("Missing value for --window_size");
+            return 1;
+        }
+    } else if (arg == "--k") {
+        if (i + 1 < argc) {
+            try {
+                k = std::stof(argv[++i]);
+            } catch (const std::exception& e) {
+                spdlog::error("Invalid k value: {}", e.what());
+                return 1;
+            }
+        } else {
+            spdlog::error("Missing value for --k");
+            return 1;
+        }
+    } else if (arg == "--R") {
+        if (i + 1 < argc) {
+            try {
+                R = std::stof(argv[++i]);
+            } catch (const std::exception& e) {
+                spdlog::error("Invalid R value: {}", e.what());
+                return 1;
+            }
+        } else {
+            spdlog::error("Missing value for --R");
+            return 1;
+        }
+    } else {
+        spdlog::error("Unknown argument: {}", arg);
+        std::cout << "Unknown arguments!" << std::endl;
+        return 1;
+    }
+}
 
         // Validate required arguments
         if (input_path.empty()) {
