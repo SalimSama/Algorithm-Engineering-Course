@@ -62,7 +62,7 @@ A C++ program for image binarization and filtering with multiple algorithms and 
 |------------------|--------------------------------------------|
 | `sequential`     | Basic threshold binarization               |
 | `parallel`       | Multi-threaded threshold binarization      |
-| `sauvola`        | Sauvola & Nick adaptive thresholding       |
+| `advanced`        | Sauvola & Nick adaptive thresholding       |
 | `integral`       | Integral image binarization                |
 | `adaptive_median`| Adaptive median filter                     |
 | `all`            | Run parallel + integral + adaptive_median  |
@@ -76,7 +76,7 @@ A C++ program for image binarization and filtering with multiple algorithms and 
 
 2. Sauvola adaptive thresholding:
    ```bash
-   ./image_processor --input image.png --method sauvola
+   ./image_processor --input image.png --method advanced
    ```
 
 3. Process all methods with default threshold:

@@ -95,8 +95,8 @@ void nick_binarize(const unsigned char* gray,
     spdlog::info("Nick binarization completed.");
 }
 
-void process_advanced_binarization(const std::string &input_path) {
-    spdlog::info("Processing advanced binarization for: {}", input_path);
+void process_advanced_binarization(const std::string &input_path, int window_size, float k, float R) {
+    spdlog::info("Processing advanced binarization for: {} with window size {}, k={}, R={}", input_path, window_size, k, R);
     int width, height, channels;
     unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
     if (!image) {
@@ -119,7 +119,7 @@ void process_advanced_binarization(const std::string &input_path) {
     auto start = std::chrono::high_resolution_clock::now();
 
     std::vector<unsigned char> output_sauvola(width * height);
-    sauvola_binarize(gray.data(), output_sauvola.data(), width, height, 15, 0.2f, 128.0f);
+    sauvola_binarize(gray.data(), output_sauvola.data(), width, height, window_size, k, R);
 
     if (!write_binary_image(output_path_sauvola, width, height, 1, output_sauvola.data())) {
         spdlog::error("Failed to write Sauvola output image: {}", output_path_sauvola);
@@ -128,7 +128,7 @@ void process_advanced_binarization(const std::string &input_path) {
     }
 
     std::vector<unsigned char> output_nick(width * height);
-    nick_binarize(gray.data(), output_nick.data(), width, height, 15, 0.1f);
+    nick_binarize(gray.data(), output_nick.data(), width, height, window_size, k);
 
     if (!write_binary_image(output_path_nick, width, height, 1, output_nick.data())) {
         spdlog::error("Failed to write Nick output image: {}", output_path_nick);

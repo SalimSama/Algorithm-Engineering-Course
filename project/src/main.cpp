@@ -15,16 +15,20 @@ void printHelp() {
     std::cout << "Required arguments:\n";
     std::cout << "  -i, --input <path>    Input image file path\n";
     std::cout << "  -m, --method <name>   Processing method to use:\n";
-    std::cout << "                        (sequential, parallel, sauvola, integral, adaptive_median, all)\n\n";
+    std::cout << "                        (sequential, parallel, advanced, integral, adaptive_median, all)\n\n";
 
     std::cout << "Options:\n";
     std::cout << "  -o, --output <path>   Output file path (required for some methods)\n";
     std::cout << "  -t, --threshold <num> Threshold value (default: 128)\n";
     std::cout << "  -h, --help            Show this help message\n\n";
+    std::cout << "  -w, --window_size <num>  Kernelgröße für adaptive Verfahren (default: 15)\n";
+    std::cout << "  --k <num>               Parameter k für Sauvola/Nick (default: 0.2)\n";
+    std::cout << "  --R <num>               Dynamikbereich R für Sauvola (default: 128.0)\n";
+
 
     std::cout << "Examples:\n";
     std::cout << "  Basic thresholding:     ./program -i input.jpg -o out.jpg -m sequential -t 150\n";
-    std::cout << "  Sauvola binarization:   ./program --input in.png --method sauvola\n";
+    std::cout << "  Sauvola and Nick binarization:   ./program --input in.png --method advanced\n";
     std::cout << "  Run all methods:        ./program -i image.ppm -o results/ -m all\n";
     std::cout << "  Show help:              ./program --help\n";
 }
@@ -36,12 +40,15 @@ int main(int argc, char *argv[]) {
         auto logger = spdlog::basic_logger_mt("file_logger", "logs/output.log");
         spdlog::set_default_logger(logger);
         spdlog::set_level(spdlog::level::info);
-        spdlog::info("***** Program started *****\n\n");
+        spdlog::info("\n\n***** Program started *****\n\n");
 
         std::string input_path;
         std::string output_path;
         std::string method;
-        int threshold = 128;
+        int threshold = 128;   // Standardwert
+        int window_size = 15;  // Standardwert
+        float k = 0.2f;        // Standardwert für Sauvola/Nick
+        float R = 128.0f;      // Standardwert für Sauvola
 
         // Parse command line arguments
         for (int i = 1; i < argc; ++i) {
@@ -88,6 +95,34 @@ int main(int argc, char *argv[]) {
                     std::cout << "Missing threshold!" << std::endl;
                     return 1;
                 }
+                if (arg == "--window_size" || arg == "-w") {
+                    if (i + 1 < argc) {
+                        try {
+                            window_size = std::stoi(argv[++i]);
+                        } catch (const std::exception& e) {
+                            spdlog::error("Invalid window_size value: {}", e.what());
+                            return 1;
+                        }
+                    }
+                } else if (arg == "--k") {
+                    if (i + 1 < argc) {
+                        try {
+                            k = std::stof(argv[++i]);
+                        } catch (const std::exception& e) {
+                            spdlog::error("Invalid k value: {}", e.what());
+                            return 1;
+                        }
+                    }
+                } else if (arg == "--R") {
+                    if (i + 1 < argc) {
+                        try {
+                            R = std::stof(argv[++i]);
+                        } catch (const std::exception& e) {
+                            spdlog::error("Invalid R value: {}", e.what());
+                            return 1;
+                        }
+                    }
+                }
             } else {
                 spdlog::error("Unknown argument: {}", arg);
                 std::cout << "Unknown arguments!" << std::endl;
@@ -108,7 +143,7 @@ int main(int argc, char *argv[]) {
         }
 
         // Check valid method
-        const std::string valid_methods[] = {"sequential", "parallel", "sauvola", "integral", "adaptive_median", "all"};
+        const std::string valid_methods[] = {"sequential", "parallel", "advanced", "integral", "adaptive_median", "all"};
         bool valid = false;
         for (const auto& m : valid_methods) {
             if (method == m) {
@@ -128,18 +163,18 @@ int main(int argc, char *argv[]) {
         else if (method == "parallel") {
             binarize_image_parallel(input_path, output_path, threshold);
         }
-        else if (method == "sauvola") {
-            process_advanced_binarization(input_path);
+        else if (method == "advanced") {
+            process_advanced_binarization(input_path, window_size, k, R);
         }
         else if (method == "integral") {
-            process_integral_binarization(input_path);
+            process_integral_binarization(input_path, window_size, k, R);
         }
         else if (method == "adaptive_median") {
             adaptive_median_filter(input_path, output_path);
         }
         else if (method == "all") {
-            binarize_image_parallel(input_path, output_path, threshold);
-            process_integral_binarization(input_path);
+            process_advanced_binarization(input_path, window_size, k, R);
+            process_integral_binarization(input_path, window_size, k, R);
             adaptive_median_filter(input_path, output_path);
         }
 

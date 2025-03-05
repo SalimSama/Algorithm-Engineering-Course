@@ -125,8 +125,8 @@ void sauvola_binarize_integral(const unsigned char* gray,
     spdlog::info("Integral Sauvola binarization completed.");
 }
 
-void process_integral_binarization(const std::string &input_path) {
-    spdlog::info("Processing integral binarization for: {}", input_path);
+void process_integral_binarization(const std::string &input_path, int window_size, float k, float R) {
+    spdlog::info("Processing integral binarization for: {} with window size {}, k={}, R={}", input_path, window_size, k, R);
     int width, height, channels;
     unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
     if (!image) {
@@ -151,7 +151,7 @@ void process_integral_binarization(const std::string &input_path) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    sauvola_binarize_integral(gray.data(), output_integral.data(), width, height, 15, 0.2f, 128.0f, integralImg, integralImgSq);
+    sauvola_binarize_integral(gray.data(), output_integral.data(), width, height, window_size, k, R, integralImg, integralImgSq);
 
     if (!write_binary_image(output_path_integral, width, height, 1, output_integral.data())) {
         spdlog::error("Failed to write Integral Sauvola output image: {}", output_path_integral);
