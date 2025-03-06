@@ -138,14 +138,12 @@ void increase_window_size(const std::vector<unsigned char> &input,
     const int new_half_win = (new_window_size - 1) / 2;
 
     // Calculate maximum number of new pixels to add
-    int max_new_elements = new_window_size * 2 + (new_window_size - old_window_size) * 2;
+    int max_new_elements = 4 * new_window_size - 4;
 
     // Ensure capacity is sufficient
     if (temp_window.capacity() < temp_window.size() + max_new_elements) {
         temp_window.reserve(temp_window.size() + max_new_elements);
     }
-
-    // Rest of your code remains the same...
     // Top and bottom rows
     for (int dx = -new_half_win; dx <= new_half_win; ++dx) {
         const int xx = xpos + dx;
