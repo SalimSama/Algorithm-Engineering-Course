@@ -182,6 +182,7 @@ int main(int argc, char *argv[]) {
             adaptive_median_filter(input_path, output_path);
         }
         else if (method == "all") {
+            binarize_image_parallel(input_path, output_path, threshold);
             process_advanced_binarization(input_path, window_size, k, R);
             process_integral_binarization(input_path, window_size, k, R);
             adaptive_median_filter(input_path, output_path);

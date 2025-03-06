@@ -9,30 +9,6 @@
 #include <spdlog/spdlog.h>
 
 
-void majority_vote(const std::string &input_path, std::string output_path) {
-    // compute n images (one for each method that we choose to apply)
-    spdlog::info("Starting majority vote for: {}", input_path);
-    int width, height, channels;
-    unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
-    if (!image) {
-        spdlog::error("Failed to load image: {}", input_path);
-        return;
-    }
-
-    if (output_path.empty()) {
-        output_path = make_output_path(input_path);
-    }
-
-    std::vector<unsigned char> out(width * height * channels);
-    auto start = std::chrono::high_resolution_clock::now();
-
-    std::vector<unsigned char> img_binarize_image_parallel(width * height * channels);
-
-    // add all intensity values to a new image with uncapped intensities
-    // divide intensity values by n (this should scale the image back to the prior scale)
-    // binarize image again (using half the maximum intensity as the threshold)
-}
-
 struct WindowParams {
     int min_size;
     int max_size;
@@ -132,13 +108,23 @@ WindowParams estimate_optimal_window_sizes(const std::vector<unsigned char>& gra
     return {min_size, max_size};
 }
 
-void increase_window_size(const std::vector<unsigned char> &input, std::vector<unsigned char> &temp_window,
+void increase_window_size(const std::vector<unsigned char> &input,
+                          std::vector<unsigned char> &temp_window,
                           int old_window_size, int new_window_size,
                           const int width, const int height, const int xpos, const int ypos) {
 
     const int old_half_win = (old_window_size - 1) / 2;
     const int new_half_win = (new_window_size - 1) / 2;
 
+    // Calculate maximum number of new pixels to add
+    int max_new_elements = new_window_size * 2 + (new_window_size - old_window_size) * 2;
+
+    // Ensure capacity is sufficient
+    if (temp_window.capacity() < temp_window.size() + max_new_elements) {
+        temp_window.reserve(temp_window.size() + max_new_elements);
+    }
+
+    // Rest of your code remains the same...
     // Top and bottom rows
     for (int dx = -new_half_win; dx <= new_half_win; ++dx) {
         const int xx = xpos + dx;
@@ -181,8 +167,12 @@ void get_window(const std::vector<unsigned char> &input,
                 int window_size,
                 std::vector<unsigned char> &output_window) {
 
-    output_window.clear(); // Wiederverwendung des Puffers
+    output_window.clear();
     const int half_win = window_size / 2;
+
+    // Estimate required capacity and reserve once
+    int estimated_size = (window_size * window_size * 3) / 4; // ~75% of window might be valid
+    output_window.reserve(estimated_size);
 
     for (int dy = -half_win; dy <= half_win; ++dy) {
         const int yy = y + dy;
@@ -255,7 +245,7 @@ void adaptive_median_filter_process(const std::vector<unsigned char> &input, std
 }
 
 void adaptive_median_filter(const std::string &input_path, std::string output_path) {
-    auto start = std::chrono::high_resolution_clock::now();
+
     spdlog::info("adaptive_median_filter Starting processing on: {}", input_path);
 
     int width, height, channels;
@@ -267,7 +257,7 @@ void adaptive_median_filter(const std::string &input_path, std::string output_pa
     }
 
     if (output_path.empty()) {
-        output_path = make_output_path(input_path);
+        output_path = make_output_path(input_path)+ "_amf.png";
     }
 
     // Grayscale conversion
@@ -284,6 +274,8 @@ void adaptive_median_filter(const std::string &input_path, std::string output_pa
     WindowParams params = estimate_optimal_window_sizes(gray, width, height);
 
     std::vector<unsigned char> output(width * height);
+
+    auto start = std::chrono::high_resolution_clock::now();
     adaptive_median_filter_process(gray, &output, width, height, 1, params.min_size, params.max_size);
 
     if (!write_binary_image(output_path, width, height, 1, output.data())) {
