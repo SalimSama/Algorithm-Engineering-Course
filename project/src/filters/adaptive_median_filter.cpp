@@ -15,9 +15,29 @@ struct WindowParams {
 };
 
 WindowParams estimate_optimal_window_sizes(const std::vector<unsigned char>& gray, int width, int height) {
-    // 1. Estimate noise level using homogeneous region variance
+    // 1. Calculate image-wide median and MAD for adaptive thresholding
+    std::vector<unsigned char> values(gray);
+    const size_t mid_idx = values.size() / 2;
+    std::nth_element(values.begin(), values.begin() + mid_idx, values.end());
+    const unsigned char median_value = values[mid_idx];
+
+    // Calculate absolute deviations from median
+    std::vector<float> abs_deviations;
+    abs_deviations.reserve(values.size());
+    for (auto val : values) {
+        abs_deviations.push_back(std::abs(static_cast<float>(val) - median_value));
+    }
+
+    // Calculate MAD
+    std::nth_element(abs_deviations.begin(),
+                    abs_deviations.begin() + abs_deviations.size()/2,
+                    abs_deviations.end());
+    const float mad = abs_deviations[abs_deviations.size()/2];
+
+    // 1. Estimate noise using MAD-based homogeneous region detection
     std::vector<float> block_variances;
     const int block_size = 8;
+    const float var_threshold = 1.4826f * mad * 2.0f; // Scale factor converts MAD to standard deviation equivalent
 
     for (int y = 0; y < height - block_size; y += block_size) {
         for (int x = 0; x < width - block_size; x += block_size) {
@@ -40,28 +60,28 @@ WindowParams estimate_optimal_window_sizes(const std::vector<unsigned char>& gra
             }
             var /= (block_size * block_size);
 
-            // Only consider homogeneous regions (low gradient blocks)
-            if (var < 200.0f) { // Threshold for homogeneous regions
+            // Use MAD-based threshold for homogeneous regions
+            if (var < var_threshold) {
                 block_variances.push_back(var);
             }
         }
     }
 
-    // Sort variances and take median as noise estimate
-    if (block_variances.empty()) {
-        return {3, 9}; // Default if estimation fails
+    // Robust noise estimation using median of variances
+    float noise_level = 0.0f;
+    if (!block_variances.empty()) {
+        std::nth_element(block_variances.begin(),
+                        block_variances.begin() + block_variances.size()/2,
+                        block_variances.end());
+        noise_level = block_variances[block_variances.size()/2];
+    } else {
+        noise_level = 1.4826f * mad; // Fallback using MAD directly
     }
 
-    std::nth_element(block_variances.begin(),
-                    block_variances.begin() + block_variances.size()/2,
-                    block_variances.end());
-    float noise_level = block_variances[block_variances.size()/2];
-
-    // 2. Calculate edge density (approximation of image complexity)
-    std::vector<unsigned char> edges(width * height, 0);
+    // 2. Calculate edge density with MAD-based threshold
     float edge_density = 0.0f;
+    const float edge_threshold = 1.4826f * mad * 1.5f; // Adaptive threshold based on MAD
 
-    // Simple Sobel edge detection
     #pragma omp parallel for reduction(+:edge_density)
     for (int y = 1; y < height - 1; y++) {
         for (int x = 1; x < width - 1; x++) {
@@ -71,7 +91,7 @@ WindowParams estimate_optimal_window_sizes(const std::vector<unsigned char>& gra
                        gray[(y+1)*width + (x-1)] + 2*gray[(y+1)*width + x] + gray[(y+1)*width + (x+1)];
 
             float magnitude = std::sqrt(gx*gx + gy*gy);
-            if (magnitude > 30.0f) { // Edge threshold
+            if (magnitude > edge_threshold) {
                 edge_density += 1.0f;
             }
         }
@@ -79,30 +99,31 @@ WindowParams estimate_optimal_window_sizes(const std::vector<unsigned char>& gra
     edge_density /= (width * height);
 
     // 3. Determine window sizes based on noise level and edge density
-    int min_size = 3; // Base min size
-    int max_size = 7; // Base max size
+    int min_size = 3;
+    int max_size;
 
-    // Adjust based on noise level
-    if (noise_level < 10.0f) {
-        max_size = 7;
-    } else if (noise_level < 30.0f) {
-        max_size = 11;
+    // Adaptive determination based on noise level relative to MAD
+    float relative_noise = noise_level / (1.4826f * mad);
+    if (relative_noise < 0.5f) {
+        max_size = 7;  // Low noise
+    } else if (relative_noise < 1.5f) {
+        max_size = 11; // Medium noise
     } else {
-        max_size = 15;
+        max_size = 15; // High noise
     }
 
-    // Fine-tune based on edge density
-    if (edge_density > 0.1f) { // Image has many details
+    // Adjust based on edge density
+    if (edge_density > 0.08f) {
+        // Many details - reduce window to preserve them
         max_size = std::max(7, max_size - 4);
     }
 
-    // Make sure min_size is odd
+    // Ensure odd sizes
     if (min_size % 2 == 0) min_size++;
-
-    // Make sure max_size is odd
     if (max_size % 2 == 0) max_size++;
 
-    spdlog::info("Estimated noise level: {:.2f}, Edge density: {:.4f}", noise_level, edge_density);
+    spdlog::info("Image statistics - Median: {}, MAD: {:.2f}", median_value, mad);
+    spdlog::info("Estimated relative noise: {:.2f}, Edge density: {:.4f}", relative_noise, edge_density);
     spdlog::info("Selected window sizes - min: {}, max: {}", min_size, max_size);
 
     return {min_size, max_size};

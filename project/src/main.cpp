@@ -45,10 +45,10 @@ int main(int argc, char *argv[]) {
         std::string input_path;
         std::string output_path;
         std::string method;
-        int threshold = 128;   // Standardwert
-        int window_size = 15;  // Standardwert
-        float k = 0.2f;        // Standardwert für Sauvola/Nick
-        float R = 128.0f;      // Standardwert für Sauvola
+        int threshold = 128;   // Standard
+        int window_size = 15;  // Standard
+        float k = 0.2f;        // Standard Sauvola/Nick
+        float R = 128.0f;      // Standard Sauvola
 
 
         // Parse command line arguments
