@@ -10,6 +10,15 @@
 #include <stb_image_write.h>
 #include <spdlog/spdlog.h>
 
+/**
+ * Computes integral images for fast local mean and variance computation.
+ *
+ * @param gray Input grayscale image.
+ * @param width Image width.
+ * @param height Image height.
+ * @param integralImg Output integral image.
+ * @param integralImgSq Output squared integral image (for variance calculation).
+ */
 
 void computeIntegralImages(const unsigned char* gray,
                            int width, int height,
@@ -19,7 +28,7 @@ void computeIntegralImages(const unsigned char* gray,
     integralImg.resize(width * height, 0.0);
     integralImgSq.resize(width * height, 0.0);
 
-    // 1. Zeilenweiser Durchgang (Prefix-Sums pro Zeile)
+    // 1. Row-wise scan (prefix sums per row)
 #pragma omp parallel for
     for (int y = 0; y < height; y++) {
         double sumRow = 0.0, sumRowSq = 0.0;
@@ -32,7 +41,7 @@ void computeIntegralImages(const unsigned char* gray,
         }
     }
 
-    // 2. Spaltenweiser Durchgang (Prefix-Sums der bereits zeilenweise summierten Daten)
+    // 2. Column-wise scan (prefix sums of the already row-summed data)
 #pragma omp parallel for
     for (int x = 0; x < width; x++) {
         double colSum = 0.0, colSumSq = 0.0;
@@ -45,19 +54,45 @@ void computeIntegralImages(const unsigned char* gray,
     }
 }
 
+/**
+ * Retrieves the sum of pixel values in a rectangular region using the integral image.
+ *
+ * @param integralImg Integral image.
+ * @param x1, y1 Top-left corner of the region.
+ * @param x2, y2 Bottom-right corner of the region.
+ * @param width Image width.
+ * @param height Image height.
+ * @return Sum of pixel values in the region.
+ */
+
 inline double getSum(const std::vector<double>& integralImg,
                      int x1, int y1, int x2, int y2, int width, int height)
 {
+    // Clamping region boundaries
     if (x1 < 0) x1 = 0; if (y1 < 0) y1 = 0;
     if (x2 >= width) x2 = width - 1;
     if (y2 >= height) y2 = height - 1;
 
+    // Using the inclusion-exclusion principle to compute region sum efficiently
     double A = (x1 > 0 && y1 > 0) ? integralImg[(y1 - 1) * width + (x1 - 1)] : 0.0;
     double B = (y1 > 0) ? integralImg[(y1 - 1) * width + x2] : 0.0;
     double C = (x1 > 0) ? integralImg[y2 * width + (x1 - 1)] : 0.0;
     double D = integralImg[y2 * width + x2];
     return D + A - B - C;
 }
+
+/**
+ * Computes the local mean and standard deviation using integral images.
+ *
+ * @param integralImg Integral image.
+ * @param integralImgSq Squared integral image.
+ * @param width Image width.
+ * @param height Image height.
+ * @param x, y Pixel coordinates.
+ * @param half_win Half of the local window size.
+ * @param mean Output mean value.
+ * @param stddev Output standard deviation value.
+ */
 
 void local_mean_std_integral(const std::vector<double>& integralImg,
                              const std::vector<double>& integralImgSq,
@@ -77,6 +112,10 @@ void local_mean_std_integral(const std::vector<double>& integralImg,
     mean = static_cast<float>(m);
     stddev = (var > 0.0) ? static_cast<float>(std::sqrt(var)) : 0.0f;
 }
+
+/**
+ * Adaptive binarization using integral images.
+ */
 
 void adaptive_binarize_integral(const unsigned char* gray,
                        unsigned char* out,
@@ -106,6 +145,10 @@ void adaptive_binarize_integral(const unsigned char* gray,
     spdlog::info("Adaptive integral binarization completed in {} seconds.", duration.count());
 }
 
+/**
+ * Implements Sauvola's binarization using integral images.
+ */
+
 void sauvola_binarize_integral(const unsigned char* gray,
                                unsigned char* out,
                                int width, int height,
@@ -124,6 +167,10 @@ void sauvola_binarize_integral(const unsigned char* gray,
 
     spdlog::info("Integral Sauvola binarization completed.");
 }
+
+/**
+ * Processes the integral binarization for a given image.
+ */
 
 void process_integral_binarization(const std::string &input_path, int window_size, float k, float R) {
     spdlog::info("Processing integral binarization for: {} with window size {}, k={}, R={}", input_path, window_size, k, R);
@@ -151,6 +198,7 @@ void process_integral_binarization(const std::string &input_path, int window_siz
 
     auto start = std::chrono::high_resolution_clock::now();
 
+    // Run Sauvola binarization using integral images
     sauvola_binarize_integral(gray.data(), output_integral.data(), width, height, window_size, k, R, integralImg, integralImgSq);
 
     if (!write_binary_image(output_path_integral, width, height, 1, output_integral.data())) {

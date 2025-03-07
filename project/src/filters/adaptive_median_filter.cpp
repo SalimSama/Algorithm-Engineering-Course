@@ -9,11 +9,13 @@
 #include <spdlog/spdlog.h>
 
 
+// Structure to store the minimum and maximum window sizes for filtering
 struct WindowParams {
     int min_size;
     int max_size;
 };
 
+// Function to estimate optimal window sizes based on image characteristics
 WindowParams estimate_optimal_window_sizes(const std::vector<unsigned char>& gray, int width, int height) {
     // 1. Calculate image-wide median and MAD for adaptive thresholding
     std::vector<unsigned char> values(gray);
@@ -34,7 +36,7 @@ WindowParams estimate_optimal_window_sizes(const std::vector<unsigned char>& gra
                     abs_deviations.end());
     const float mad = abs_deviations[abs_deviations.size()/2];
 
-    // 1. Estimate noise using MAD-based homogeneous region detection
+    // 2. Estimate noise using MAD-based homogeneous region detection
     std::vector<float> block_variances;
     const int block_size = 8;
     const float var_threshold = 1.4826f * mad * 2.0f; // Scale factor converts MAD to standard deviation equivalent
@@ -78,13 +80,14 @@ WindowParams estimate_optimal_window_sizes(const std::vector<unsigned char>& gra
         noise_level = 1.4826f * mad; // Fallback using MAD directly
     }
 
-    // 2. Calculate edge density with MAD-based threshold
+    // 3. Compute edge density using gradient magnitude
     float edge_density = 0.0f;
     const float edge_threshold = 1.4826f * mad * 1.5f; // Adaptive threshold based on MAD
 
     #pragma omp parallel for reduction(+:edge_density)
     for (int y = 1; y < height - 1; y++) {
         for (int x = 1; x < width - 1; x++) {
+            // Compute Sobel gradient magnitude
             float gx = -gray[(y-1)*width + (x-1)] - 2*gray[y*width + (x-1)] - gray[(y+1)*width + (x-1)] +
                        gray[(y-1)*width + (x+1)] + 2*gray[y*width + (x+1)] + gray[(y+1)*width + (x+1)];
             float gy = -gray[(y-1)*width + (x-1)] - 2*gray[(y-1)*width + x] - gray[(y-1)*width + (x+1)] +
@@ -98,7 +101,7 @@ WindowParams estimate_optimal_window_sizes(const std::vector<unsigned char>& gra
     }
     edge_density /= (width * height);
 
-    // 3. Determine window sizes based on noise level and edge density
+    // 4. Determine window sizes based on noise level and edge density
     int min_size = 3;
     int max_size;
 
@@ -112,13 +115,13 @@ WindowParams estimate_optimal_window_sizes(const std::vector<unsigned char>& gra
         max_size = 15; // High noise
     }
 
-    // Adjust based on edge density
+    // Adjust max window size based on edge density
     if (edge_density > 0.08f) {
         // Many details - reduce window to preserve them
         max_size = std::max(7, max_size - 4);
     }
 
-    // Ensure odd sizes
+    // Ensure odd-sized windows
     if (min_size % 2 == 0) min_size++;
     if (max_size % 2 == 0) max_size++;
 
@@ -180,6 +183,7 @@ void increase_window_size(const std::vector<unsigned char> &input,
     }
 }
 
+// Function to extract a window from the image at a given location
 void get_window(const std::vector<unsigned char> &input,
                 int width, int height,
                 int x, int y,
@@ -207,13 +211,13 @@ void get_window(const std::vector<unsigned char> &input,
     }
 }
 
+// Adaptive median filtering process
 void adaptive_median_filter_process(const std::vector<unsigned char> &input, std::vector<unsigned char> *output,
                                    const int width, const int height, const int channels,
                                    int min_win_size, int max_window_size) {
 
     #pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < height; ++y) {
-        // Vor-Allokation des temp_window pro Thread
         std::vector<unsigned char> temp_window;
         temp_window.reserve(max_window_size * max_window_size);
 
@@ -224,7 +228,7 @@ void adaptive_median_filter_process(const std::vector<unsigned char> &input, std
             int current_win_size = min_win_size;
             temp_window.clear();
 
-            // Initialen Window auffüllen
+            // Extract initial window
             get_window(input, width, height, x, y, current_win_size, temp_window);
 
             bool flag = false;
@@ -268,6 +272,8 @@ void adaptive_median_filter(const std::string &input_path, std::string output_pa
     spdlog::info("adaptive_median_filter Starting processing on: {}", input_path);
 
     int width, height, channels;
+
+    // Load the input image from the file path
     unsigned char *image = stbi_load(input_path.c_str(), &width, &height, &channels, 0);
 
     if (!image) {
@@ -275,12 +281,15 @@ void adaptive_median_filter(const std::string &input_path, std::string output_pa
         return;
     }
 
+    // If no output path is specified, generate one based on the input path
     if (output_path.empty()) {
         output_path = make_output_path(input_path)+ "_amf.png";
     }
 
-    // Grayscale conversion
+    // Convert the image to grayscale using standard luminance weights
     std::vector<unsigned char> gray(width * height);
+
+    // Parallel loop to speed up grayscale conversion
 #pragma omp parallel for simd
     for (int i = 0; i < width * height; ++i) {
         gray[i] = static_cast<unsigned char>(
@@ -295,6 +304,8 @@ void adaptive_median_filter(const std::string &input_path, std::string output_pa
     std::vector<unsigned char> output(width * height);
 
     auto start = std::chrono::high_resolution_clock::now();
+
+    // Apply the adaptive median filter to the grayscale image
     adaptive_median_filter_process(gray, &output, width, height, 1, params.min_size, params.max_size);
 
     if (!write_binary_image(output_path, width, height, 1, output.data())) {
