@@ -2,7 +2,7 @@
 
 ## Image Processing Tool
 
-A C++ program for image binarization and filtering with multiple algorithms and parallel processing support.
+This is a C++ program for image binarization and filtering with multiple algorithms and parallel processing support.
 
 ## Features
 
@@ -52,11 +52,11 @@ A C++ program for image binarization and filtering with multiple algorithms and 
 |---------------------------|------------------------------------------------|----------|
 | `-i, --input <PATH>`      | Input image path                               | Yes      |
 | `-m, --method <NAME>`     | Processing method (see below)                  | Yes      |
-| `-o, --output <PATH>`     | Output path (required for some methods)        | No       |
+| `-o, --output <PATH>`     | Output path                                    | No       |
 | `-t, --threshold <NUM>`   | Threshold value (default: 128)                 | No       |
 | `-w, --window_size <NUM>` | Kernel size for adaptive methods (default: 15) | No       |
 | `--k <NUM>`               | for Sauvola/Nick (default: 0.2)                | No       |
-| `--R <NUM>`               | for Sauvola (default: 128.0)                   | No       |
+| `--R <NUM>`               | for Sauvola (default: 128)                     | No       |
 | `-h, --help`              | Show help message                              | No       |
 
 ### Available Methods
@@ -118,7 +118,7 @@ Optimize binarization and filtering results by understanding these key parameter
   └───────────┘       Sensitive ▼  ▼ Sensitive   Text      ▼  ▼ Background
   Larger: Handle        (Default: 128)            (Range: 0.05-0.5)
   illumination          Ideal for:                Typical:
-  variations             - Clean backgrounds       - 0.34 default
+  variations            - Clean backgrounds       - 0.34 default
   Smaller: Keep         - Noisy documents         - 0.2-0.25 light text
   fine details                                    
 ```
