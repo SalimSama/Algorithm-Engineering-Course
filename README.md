@@ -48,24 +48,27 @@ A C++ program for image binarization and filtering with multiple algorithms and 
 
 ### Options
 
-| Flag                | Description                                  | Required               |
-|---------------------|--------------------------------------------|------------------------|
-| `-i, --input <PATH>`  | Input image path                           | Yes                    |
-| `-m, --method <NAME>` | Processing method (see below)              | Yes                    |
-| `-o, --output <PATH>` | Output path (required for some methods)     | Depends on method      |
-| `-t, --threshold <NUM>` | Threshold value (default: 128)            | No                     |
-| `-h, --help`         | Show help message                          | No                     |
+| Flag                      | Description                                    | Required |
+|---------------------------|------------------------------------------------|----------|
+| `-i, --input <PATH>`      | Input image path                               | Yes      |
+| `-m, --method <NAME>`     | Processing method (see below)                  | Yes      |
+| `-o, --output <PATH>`     | Output path (required for some methods)        | No       |
+| `-t, --threshold <NUM>`   | Threshold value (default: 128)                 | No       |
+| `-w, --window_size <NUM>` | Kernel size for adaptive methods (default: 15) | No       |
+| `--k <NUM>`               | for Sauvola/Nick (default: 0.2)                | No       |
+| `--R <NUM>`               | for Sauvola (default: 128.0)                   | No       |
+| `-h, --help`              | Show help message                              | No       |
 
 ### Available Methods
 
-| Method Name       | Description                                  |
-|------------------|--------------------------------------------|
-| `sequential`     | Basic threshold binarization               |
-| `parallel`       | Multi-threaded threshold binarization      |
-| `advanced`        | Sauvola & Nick adaptive thresholding       |
-| `integral`       | Integral image binarization                |
-| `adaptive_median`| Adaptive median filter                     |
-| `all`            | Run parallel + integral + adaptive_median  |
+| Method Name      | Description                                 |
+|------------------|---------------------------------------------|
+| `sequential`     | Basic threshold binarization                |
+| `parallel`       | Multi-threaded threshold binarization       |
+| `advanced`       | Sauvola & Nick adaptive thresholding        |
+| `integral`       | Integral image binarization                 |
+| `adaptive_median`| Adaptive median filter                      |
+| `all`            | Run parallel + integral + adaptive_median   |
 
 ## Examples
 
@@ -104,7 +107,7 @@ A C++ program for image binarization and filtering with multiple algorithms and 
 
 Optimize binarization and filtering results by understanding these key parameters:
 
-### 🎨 Parameter Art & Effects
+### Parameter Art & Effects
 
 ```text
 [Window Size]            [R Value]               [k Value]
@@ -120,24 +123,24 @@ Optimize binarization and filtering results by understanding these key parameter
   fine details                                    
 ```
 
-### 🔧 Key Parameters Guide
+### Key Parameters Guide
 
 1. **Window Size (Neighborhood)**
    - **What it does**: Controls local area analysis
    - **Sweet Spot**: 
-     - 📄 Documents: 15-35px 
-     - 🖼 Natural Images: 25-45px
+     - Documents: 15-35px 
+     - Natural Images: 25-45px
    - **Tradeoff**: 
-     - ⬆️ Larger = Better illumination handling
-     - ⬇️ Smaller = Sharper text edges
+     - Larger = Better illumination handling
+     - Smaller = Sharper text edges
 
 2. **R (Dynamic Range)**
    - **Formula**: `Threshold = mean * (1 + k*(std_dev/R - 1))`
    - **Pro Tips**:
-     - 🔍 Increase R (128→160) for:
+     - Increase R (128→160) for:
        - Consistent backgrounds
        - Low-contrast documents
-     - 🔍 Decrease R (128→96) for:
+     - Decrease R (128→96) for:
        - Vintage/aged documents
        - Noisy images
 
@@ -156,7 +159,7 @@ Optimize binarization and filtering results by understanding these key parameter
      - 0.3-0.4: Historical archives
      - 0.45-0.5: Pencil sketches
 
-### 🛠 Optimization Workflow
+### Optimization Workflow
 
 1. **Baseline Test**
    ```bash
@@ -165,11 +168,11 @@ Optimize binarization and filtering results by understanding these key parameter
    Defaults: Window=15, R=128, k=0.2
 
 2. **Diagnose Issues**
-   - 🌑 Too much noise? Try:
+   - Too much noise? Try:
      ```bash
      ./image_processor ... -w=35 --k=0.25 --R=140
      ```
-   - 🌫 Missing faint text? Try:
+   - Missing faint text? Try:
      ```bash
      ./image_processor ... -w=15 --k=0.45 --R=112
      ```
@@ -182,7 +185,7 @@ Optimize binarization and filtering results by understanding these key parameter
    ./image_processor -i denoised.jpg -m advanced -o final.jpg
    ```
 
-### 📊 Parameter Matrix Cheatsheet
+### Parameter Matrix Cheatsheet
 
 | Scenario                | Window |  R  |  k  | Median Window |
 |-------------------------|--------|-----|-----|---------------|
@@ -191,7 +194,7 @@ Optimize binarization and filtering results by understanding these key parameter
 | Camera-captured text    |   35   | 160 | 0.3 |       15      |
 | Pencil sketch           |   20   | 64  | 0.5 |       -       |
 
-### 🖼 Visual Examples
+### Visual Examples
 
 1. **Underexposed Photo**
    - **Before**: Text merges with background
@@ -208,7 +211,7 @@ Optimize binarization and filtering results by understanding these key parameter
    - **Fix**: `window=20, R=128, k=0.45`
    - **After**: Text becomes crisp black
 
-### 🚀 Pro Tip
+### Pro Tip
 
 - **Batch Testing**:
   ```bash
