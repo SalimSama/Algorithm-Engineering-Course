@@ -167,11 +167,11 @@ Optimize binarization and filtering results by understanding these key parameter
 2. **Diagnose Issues**
    - 🌑 Too much noise? Try:
      ```bash
-     ./image_processor ... --params window=35,k=0.25,R=140
+     ./image_processor ... -w=35 --k=0.25 --R=140
      ```
    - 🌫 Missing faint text? Try:
      ```bash
-     ./image_processor ... --params window=15,k=0.45,R=112
+     ./image_processor ... -w=15 --k=0.45 --R=112
      ```
 
 3. **Adaptive Median Filter Combo**
@@ -214,8 +214,7 @@ Optimize binarization and filtering results by understanding these key parameter
   ```bash
   for w in 15 25 35; do
     for k in 0.2 0.3 0.4; do
-      ./image_processor -i doc.jpg -o output_${w}_${k}.jpg \
-        -m advanced --params window=$w,k=$k
+      ./image_processor -i doc.jpg -o output_${w}_${k}.jpg -m advanced -w=$w --k=$k
     done
   done
   ```
