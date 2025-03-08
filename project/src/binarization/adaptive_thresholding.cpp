@@ -94,7 +94,7 @@ void adaptive_binarize(const unsigned char* gray,
     }
 
     auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start;
+    std::chrono::duration<float> duration = end - start;
     spdlog::info("Adaptive binarization completed in {} seconds.", duration.count());
 }
 
@@ -213,7 +213,7 @@ void process_advanced_binarization(const std::string &input_path, int window_siz
     }
 
     auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start;
+    std::chrono::duration<float> duration = end - start;
     spdlog::info("Advanced binarization process completed in {} seconds.", duration.count());
 
     stbi_image_free(image);

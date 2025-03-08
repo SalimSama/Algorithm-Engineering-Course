@@ -61,7 +61,7 @@ void binarize_image(const std::string &input_path, std::string output_path, int 
 
     // Stop measuring execution time
     auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start;
+    std::chrono::duration<float> duration = end - start;
     spdlog::info("Sequential binarization completed in {} seconds.", duration.count());
 
     // Write the output image
@@ -131,7 +131,7 @@ void binarize_image_parallel(const std::string &input_path, std::string output_p
 
     // Stop measuring execution time
     auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start;
+    std::chrono::duration<float> duration = end - start;
     spdlog::info("Parallel binarization completed in {} seconds.", duration.count());
 
     // Write the output image

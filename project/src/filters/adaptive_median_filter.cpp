@@ -317,6 +317,6 @@ void adaptive_median_filter(const std::string &input_path, std::string output_pa
     stbi_image_free(image);
 
     auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start;
+    std::chrono::duration<float> duration = end - start;
     spdlog::info("adaptive_median_filter Total runtime: {} seconds", duration.count());
 }
