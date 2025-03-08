@@ -100,6 +100,126 @@ A C++ program for image binarization and filtering with multiple algorithms and 
   [2023-08-20 14:30:46] [info] ***** Program finished successfully *****
   ```
 
+## Parameter Tuning Tutorial
+
+Optimize binarization and filtering results by understanding these key parameters:
+
+### 🎨 Parameter Art & Effects
+
+```text
+[Window Size]            [R Value]               [k Value]
+  ┌───────────┐          ▲ Dynamic Range          ▲ Sensitivity
+  │  ●  ●  ●  │          │                        │
+  │  ●  ●  ●  │        Higher ◄─┐  ┌─► Lower      Higher ◄─┐  ┌─► Lower  
+  │  ●  ●  ●  │        Less     │  │   More      Preserve  │  │   Clean
+  └───────────┘       Sensitive ▼  ▼ Sensitive   Text      ▼  ▼ Background
+  Larger: Handle        (Default: 128)            (Range: 0.05-0.5)
+  illumination          Ideal for:                Typical:
+  variations             - Clean backgrounds       - 0.34 default
+  Smaller: Keep         - Noisy documents         - 0.2-0.25 light text
+  fine details                                    
+```
+
+### 🔧 Key Parameters Guide
+
+1. **Window Size (Neighborhood)**
+   - **What it does**: Controls local area analysis
+   - **Sweet Spot**: 
+     - 📄 Documents: 15-35px 
+     - 🖼 Natural Images: 25-45px
+   - **Tradeoff**: 
+     - ⬆️ Larger = Better illumination handling
+     - ⬇️ Smaller = Sharper text edges
+
+2. **R (Dynamic Range)**
+   - **Formula**: `Threshold = mean * (1 + k*(std_dev/R - 1))`
+   - **Pro Tips**:
+     - 🔍 Increase R (128→160) for:
+       - Consistent backgrounds
+       - Low-contrast documents
+     - 🔍 Decrease R (128→96) for:
+       - Vintage/aged documents
+       - Noisy images
+
+3. **k (Sensitivity Factor)**
+   - **Visual Impact**:
+     ```
+     k=0.15          k=0.34          k=0.5
+     ┌────────┐      ┌────────┐      ┌────────┐
+     │████  ██│      │███   ██│      │██    ██│
+     │  ██ █  │      │ ██ ██  │      │  ███   │
+     └────────┘      └────────┘      └────────┘
+     Clean Background Balanced Approach    Faint Text
+     ```
+   - **Rule of Thumb**:
+     - 0.15-0.25: Modern documents
+     - 0.3-0.4: Historical archives
+     - 0.45-0.5: Pencil sketches
+
+### 🛠 Optimization Workflow
+
+1. **Baseline Test**
+   ```bash
+   ./image_processor -i doc.jpg -m advanced -o test1.jpg
+   ```
+   Defaults: Window=15, R=128, k=0.2
+
+2. **Diagnose Issues**
+   - 🌑 Too much noise? Try:
+     ```bash
+     ./image_processor ... --params window=35,k=0.25,R=140
+     ```
+   - 🌫 Missing faint text? Try:
+     ```bash
+     ./image_processor ... --params window=15,k=0.45,R=112
+     ```
+
+3. **Adaptive Median Filter Combo**
+   For salt-and-pepper noise:
+   ```bash
+   # First denoise then binarize
+   ./image_processor -i noisy.jpg -m adaptive_median -o denoised.jpg
+   ./image_processor -i denoised.jpg -m advanced -o final.jpg
+   ```
+
+### 📊 Parameter Matrix Cheatsheet
+
+| Scenario                | Window |  R  |  k  | Median Window |
+|-------------------------|--------|-----|-----|---------------|
+| Modern document scan    |   25   | 128 | 0.2 |       7       |
+| Historical manuscript   |   15   | 96  | 0.4 |       11      |
+| Camera-captured text    |   35   | 160 | 0.3 |       15      |
+| Pencil sketch           |   20   | 64  | 0.5 |       -       |
+
+### 🖼 Visual Examples
+
+1. **Underexposed Photo**
+   - **Before**: Text merges with background
+   - **Fix**: `window=40, R=110, k=0.4`
+   - **After**: Clear character separation
+
+2. **Ink Bleed Through**
+   - **Before**: Reverse side text visible
+   - **Fix**: `window=15, R=140, k=0.25`
+   - **After**: Background noise suppressed
+
+3. **Low-Contrast Fax**
+   - **Before**: Gray text on gray background
+   - **Fix**: `window=20, R=128, k=0.45`
+   - **After**: Text becomes crisp black
+
+### 🚀 Pro Tip
+
+- **Batch Testing**:
+  ```bash
+  for w in 15 25 35; do
+    for k in 0.2 0.3 0.4; do
+      ./image_processor -i doc.jpg -o output_${w}_${k}.jpg \
+        -m advanced --params window=$w,k=$k
+    done
+  done
+  ```
+
 ## Troubleshooting
 
 **Common Issues:**
@@ -112,6 +232,3 @@ A C++ program for image binarization and filtering with multiple algorithms and 
 - Check `logs/output.log` for detailed error messages
 - Enable debug logging by changing `spdlog::level::info` to `spdlog::level::debug`
 
-## License
-
-GNU General Public License v3.0
