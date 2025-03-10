@@ -146,7 +146,7 @@ void nick_binarize(const unsigned char* gray,
 
     // Define the threshold function for Nick's method
     auto threshold_func = [k](float mean, float stddev) {
-        return mean + k * stddev;
+        return mean - k * stddev;
     };
 
     adaptive_binarize(gray, out, width, height, window_size, threshold_func);
