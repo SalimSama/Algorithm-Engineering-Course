@@ -10,6 +10,6 @@ bool write_ppm_ascii(const std::string &filename, int width, int height, int cha
 bool write_binary_image(const std::string &filename, int width, int height, int channels, const unsigned char *data);
 
 // Hilfsfunktion zur Generierung des Ausgabepfads
-std::string make_output_path(const std::string &input_path);
+std::string make_output_path(const std::string &input_path, const std::string &methodName);
 
 #endif // IMAGE_IO_H

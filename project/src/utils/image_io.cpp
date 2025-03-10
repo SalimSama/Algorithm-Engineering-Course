@@ -31,7 +31,7 @@ bool write_ppm_ascii(const std::string &filename, int width, int height, int cha
     return true;
 }
 
-std::string make_output_path(const std::string &input_path) {
+std::string make_output_path(const std::string &input_path, const std::string &methodName) {
     spdlog::info("Creating output path for input: {}", input_path);
     namespace fs = std::filesystem;
     fs::path p(input_path);
@@ -44,7 +44,12 @@ std::string make_output_path(const std::string &input_path) {
         spdlog::info("Created results directory: {}", results_dir.string());
     }
 
-    std::string output_path = (results_dir / (stem + "_bin" + ext)).string();
+    std::string suffix = "_bin";
+    if (!methodName.empty()) {
+        suffix += "_" + methodName;
+    }
+
+    std::string output_path = (results_dir / (stem + suffix + ext)).string();
     spdlog::info("Output path created: {}", output_path);
     return output_path;
 }

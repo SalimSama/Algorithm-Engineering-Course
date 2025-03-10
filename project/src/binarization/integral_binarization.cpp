@@ -193,7 +193,7 @@ void process_integral_binarization(const std::string &input_path, int window_siz
     std::vector<float> integralImg, integralImgSq;
     computeIntegralImages(gray.data(), width, height, integralImg, integralImgSq);
 
-    std::string output_path_integral = make_output_path(input_path) + "_integral_sauvola.png";
+    std::string output_path_integral = make_output_path(input_path, "integralSauvola");
     std::vector<unsigned char> output_integral(width * height);
 
     auto start = std::chrono::high_resolution_clock::now();

@@ -283,7 +283,7 @@ void adaptive_median_filter(const std::string &input_path, std::string output_pa
 
     // If no output path is specified, generate one based on the input path
     if (output_path.empty()) {
-        output_path = make_output_path(input_path)+ "_amf.png";
+        output_path = make_output_path(input_path, "amf");
     }
 
     // Convert the image to grayscale using standard luminance weights

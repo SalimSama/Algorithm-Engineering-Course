@@ -32,7 +32,7 @@ void binarize_image(const std::string &input_path, std::string output_path, int 
 
     // If no output path is specified, generate one automatically
     if (output_path.empty()) {
-        output_path = make_output_path(input_path);
+        output_path = make_output_path(input_path, "");
     }
 
     // Create an output buffer for the binarized image
@@ -56,6 +56,10 @@ void binarize_image(const std::string &input_path, std::string output_path, int 
         // Assign the binary value to all channels (grayscale effect)
         for (int c = 0; c < channels; c++) {
             out[idx + c] = binary;
+        }
+        // If there's an alpha channel, preserve it at full opacity
+        if (channels == 4) {
+            out[idx + 3] = 255; // Always set alpha to fully opaque
         }
     }
 
@@ -101,7 +105,7 @@ void binarize_image_parallel(const std::string &input_path, std::string output_p
 
     // If no output path is specified, generate one automatically
     if (output_path.empty()) {
-        output_path = make_output_path(input_path);
+        output_path = make_output_path(input_path, "");
     }
 
     // Create an output buffer for the binarized image
@@ -126,6 +130,10 @@ void binarize_image_parallel(const std::string &input_path, std::string output_p
         // Assign the binary value to all channels (grayscale effect)
         for (int c = 0; c < channels; c++) {
             out[idx + c] = binary;
+        }
+        // If there's an alpha channel, preserve it at full opacity
+        if (channels == 4) {
+            out[idx + 3] = 255; // Always set alpha to fully opaque
         }
     }
 

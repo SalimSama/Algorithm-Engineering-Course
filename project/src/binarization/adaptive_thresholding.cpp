@@ -187,8 +187,8 @@ void process_advanced_binarization(const std::string &input_path, int window_siz
     }
 
     // Generate output file paths
-    std::string output_path_sauvola = make_output_path(input_path) + "_sauvola.png";
-    std::string output_path_nick = make_output_path(input_path) + "_nick.png";
+    std::string output_path_sauvola = make_output_path(input_path, "sauvola");
+    std::string output_path_nick = make_output_path(input_path, "nick");
 
     auto start = std::chrono::high_resolution_clock::now();
 
